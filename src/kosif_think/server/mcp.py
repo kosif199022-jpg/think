@@ -12,7 +12,7 @@ from .api import executor
 TOOLS_DEFINITION = [
     {
         "name": "think_execute",
-        "description": "Executes a unified KOSIF Think goal across reasoning, computer, browser, and WhatsApp lanes.",
+        "description": "Executes a unified KOSIF Think goal across reasoning, coding, graphics, computer, browser, and WhatsApp lanes.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -42,6 +42,41 @@ TOOLS_DEFINITION = [
                 "prompt": {"type": "string", "description": "The problem or question to deliberate."}
             },
             "required": ["prompt"]
+        }
+    },
+    {
+        "name": "think_tree_of_thoughts",
+        "description": "Explores a complex problem using branched Tree of Thoughts (ToT) search with beam pruning.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "problem": {"type": "string", "description": "The complex reasoning problem to explore."}
+            },
+            "required": ["problem"]
+        }
+    },
+    {
+        "name": "think_code_action",
+        "description": "Runs AST parsing, codebase mapping, test running, or debugging.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["analyze", "repo_map", "test", "debug"]},
+                "target": {"type": "string", "description": "File path, directory, or test command."}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "think_render_graphic",
+        "description": "Generates Mermaid diagrams, SVG component vectors, or interactive Canvas HTML widgets.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "format": {"type": "string", "enum": ["mermaid", "svg", "canvas"]},
+                "title": {"type": "string", "description": "Title or description for the visual asset."}
+            },
+            "required": ["format"]
         }
     }
 ]
@@ -77,6 +112,28 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> Dict[str, An
         if handler:
             return handler.council.deliberate(prompt, {})
         return {"error": "Reasoning lane not available"}
+    elif name == "think_tree_of_thoughts":
+        prob = arguments.get("problem", "")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            return handler.tot.search(prob)
+        return {"error": "Reasoning lane not available"}
+    elif name == "think_code_action":
+        action = arguments.get("action", "analyze")
+        target = arguments.get("target", ".")
+        handler = executor._lane_handlers.get("coding")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="coding", intent=action, value=target))
+        return {"error": "Coding lane not available"}
+    elif name == "think_render_graphic":
+        fmt = arguments.get("format", "mermaid")
+        title = arguments.get("title", "Visual Architecture")
+        handler = executor._lane_handlers.get("graphics")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="graphics", intent=fmt, description=title))
+        return {"error": "Graphics lane not available"}
     return {"error": f"Unknown tool: {name}"}
 
 async def run_mcp_stdio():

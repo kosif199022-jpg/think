@@ -1,12 +1,25 @@
 """
-Execution lanes for KOSIF Think:
-- Reasoning (Fast Heuristic, Council, Deep Cognitive)
+Unified Execution lanes for KOSIF Think:
+- Reasoning (Fast, Council, Cognitive, Tree of Thoughts, Graph of Thoughts, Reflexion, MCTS)
+- Coding (AST Parser, Atomic Patcher, Test Sandbox, Repo Mapper, Autonomous Debugger)
+- Graphics (SVG Builder, Diagram Synthesizer, Generative Canvas, Layout Analyzer)
 - Computer (Windows UI Automation, apps, files, screen)
 - Browser (Jev-Browser action graph, CDP, persistent Chrome)
 - WhatsApp (Messaging, media, delivery verification)
 """
 
-from .reasoning import ReasoningLane, CouncilReasoning, CognitiveUnderstanding
+from .reasoning import (
+    ReasoningLane, CouncilReasoning, CognitiveUnderstanding,
+    TreeOfThoughts, GraphOfThoughts, ReflexionEngine, MCTSPlanner
+)
+from .coding import (
+    CodingLane, ASTCodeParser, AtomicPatcher,
+    TestSandbox, RepoMapper, AutonomousDebugger
+)
+from .graphics import (
+    GraphicsLane, SVGBuilder, DiagramSynthesizer,
+    GenerativeCanvas, VisualLayoutAnalyzer
+)
 from .computer import ComputerLane, AppControl, FileControl, ScreenState
 from .browser import BrowserLane, ActionGraph, JevDecisionRouter, PlaywrightCDPClient
 from .whatsapp import WhatsAppLane, WhatsAppBridge
@@ -15,6 +28,21 @@ __all__ = [
     "ReasoningLane",
     "CouncilReasoning",
     "CognitiveUnderstanding",
+    "TreeOfThoughts",
+    "GraphOfThoughts",
+    "ReflexionEngine",
+    "MCTSPlanner",
+    "CodingLane",
+    "ASTCodeParser",
+    "AtomicPatcher",
+    "TestSandbox",
+    "RepoMapper",
+    "AutonomousDebugger",
+    "GraphicsLane",
+    "SVGBuilder",
+    "DiagramSynthesizer",
+    "GenerativeCanvas",
+    "VisualLayoutAnalyzer",
     "ComputerLane",
     "AppControl",
     "FileControl",
