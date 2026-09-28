@@ -1,0 +1,24 @@
+name: KOSIF Think CI
+
+on:
+  push:
+    branches: [main, integration/unified-kosif]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile unified runtime
+        run: |
+          python -m py_compile src/kosif_think/browser_jev_lane.py
+          python -m py_compile src/kosif_think/browser_remote_lane.py
+          python -m py_compile src/kosif_think/unified_router.py
+          python -m py_compile src/kosif_think/whatsapp_adapter.py
+      - name: Run pure browser/Jev tests
+        run: python tests/test_browser_jev_lane.py
