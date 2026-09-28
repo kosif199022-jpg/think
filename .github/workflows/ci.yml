@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, integration/unified-kosif]
   pull_request:
-    branches: [main]
+    branches: [main, integration/unified-kosif]
 
 jobs:
   test:
@@ -15,10 +15,8 @@ jobs:
         with:
           python-version: '3.13'
       - name: Compile unified runtime
-        run: |
-          python -m py_compile src/kosif_think/browser_jev_lane.py
-          python -m py_compile src/kosif_think/browser_remote_lane.py
-          python -m py_compile src/kosif_think/unified_router.py
-          python -m py_compile src/kosif_think/whatsapp_adapter.py
-      - name: Run pure browser/Jev tests
-        run: python tests/test_browser_jev_lane.py
+        run: python -m compileall -q src/kosif_think
+      - name: Run full unit test suite
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
