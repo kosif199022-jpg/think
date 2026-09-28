@@ -130,18 +130,31 @@ class ThinkExecutor:
                     checkpoint_details={"type": cp.checkpoint_type, "message": cp.message, **cp.details}
                 )
 
-            # Execute via Lane Handler
+            # Execute via Lane Handler. Missing execution authority is a hard failure;
+            # never replace it with a simulated successful side effect.
             handler = self._lane_handlers.get(lane)
+            if handler is None:
+                error = f"No execution handler registered for lane '{lane}'."
+                self.router.record_lane_metric(lane, success=False, latency_ms=0.0)
+                self.audit.record_event(
+                    "step_failed",
+                    req.task_id,
+                    lane,
+                    {"error": error, "step_id": step.step_id},
+                    status="error"
+                )
+                return ExecutionResult(
+                    task_id=req.task_id,
+                    goal=req.clean_goal,
+                    status="failed",
+                    steps_executed=executed_steps,
+                    duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                    error=error
+                )
+
             step_t0 = time.perf_counter()
-            step_result: Dict[str, Any] = {}
-
             try:
-                if handler:
-                    step_result = await handler.dispatch_step(step, cancellation_token)
-                else:
-                    # Fallback simulation/mock if lane handler is not yet registered
-                    step_result = {"status": "ok", "action": step.intent, "changed": True, "value": step.value}
-
+                step_result = await handler.dispatch_step(step, cancellation_token)
                 step_latency = (time.perf_counter() - step_t0) * 1000
                 self.router.record_lane_metric(lane, success=True, latency_ms=step_latency)
 
@@ -158,23 +171,37 @@ class ThinkExecutor:
                     error=str(e)
                 )
 
-            # 4. Observable Verification
+            # 4. Observable Verification. A transport/click/handler success is not
+            # task success unless the required postconditions are observable.
             v_res = self.verifier.verify_step_postconditions(step.expected_postconditions, step_result)
             if not v_res.verified:
+                failure_reason = v_res.failure_reason or "required observable postcondition was not verified"
+                error = f"Verification failed: {failure_reason}"
+                self.router.record_lane_metric(lane, success=False, latency_ms=step_latency)
                 self.audit.record_event("verification_failed", req.task_id, lane, {
-                    "reason": v_res.failure_reason
-                }, status="warning")
+                    "reason": failure_reason,
+                    "step_id": step.step_id
+                }, status="error")
 
-                # Try recovery
                 if self.recovery.detect_action_loop():
                     rec_action = self.recovery.plan_recovery_action(step_result.get("url", ""), req.clean_goal)
-                    self.audit.record_event("recovery_dispatched", req.task_id, lane, rec_action)
+                    self.audit.record_event("recovery_planned", req.task_id, lane, rec_action, status="warning")
+
+                return ExecutionResult(
+                    task_id=req.task_id,
+                    goal=req.clean_goal,
+                    status="failed",
+                    steps_executed=executed_steps,
+                    duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+                    output=step_result,
+                    error=error
+                )
 
             executed_steps += 1
             last_output = step_result
             self.recovery.record_action({"lane": lane, "action": step.intent, "target": step.target.name})
 
-        # Record memory
+        # Record memory only after every planned step has executed and verified.
         total_duration = round((time.perf_counter() - t0) * 1000, 2)
         self.memory.record_task_summary(req.task_id, req.clean_goal, success=True, steps_count=executed_steps)
         self.audit.record_event("task_completed", req.task_id, "core", {"duration_ms": total_duration})
