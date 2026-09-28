@@ -4,6 +4,12 @@ Usage:
     think run "<goal>" [--approved]
     think plan "<goal>"
     think council "<prompt>"
+    think tot "<problem>"
+    think got "<problem>"
+    think reflexion "<action>"
+    think mcts "<problem>"
+    think code [analyze|map|test|debug] [target]
+    think graphic [diagram|svg|canvas] [title]
     think status
     think server [--host 127.0.0.1] [--port 49400]
     think mcp
@@ -17,6 +23,8 @@ from typing import List, Optional
 
 from .core.executor import ThinkExecutor
 from .lanes.reasoning import ReasoningLane
+from .lanes.coding import CodingLane
+from .lanes.graphics import GraphicsLane
 from .lanes.computer import ComputerLane
 from .lanes.browser import BrowserLane
 from .lanes.whatsapp import WhatsAppLane
@@ -27,6 +35,8 @@ from .config import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
 def setup_executor() -> ThinkExecutor:
     ex = ThinkExecutor()
     ex.register_lane("reasoning", ReasoningLane())
+    ex.register_lane("coding", CodingLane())
+    ex.register_lane("graphics", GraphicsLane())
     ex.register_lane("computer", ComputerLane())
     ex.register_lane("browser", BrowserLane())
     ex.register_lane("whatsapp", WhatsAppLane())
@@ -42,7 +52,7 @@ def main(args: Optional[List[str]] = None):
 
     parser = argparse.ArgumentParser(
         prog="think",
-        description="🧠 KOSIF Think: Unified orchestration & execution platform."
+        description="🧠 KOSIF Think: Super-Intelligent Unified Platform for Reasoning, Coding, Graphics, and Automation."
     )
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
@@ -58,6 +68,32 @@ def main(args: Optional[List[str]] = None):
     # Command: council
     p_council = subparsers.add_parser("council", help="Run multi-agent deliberation on a dilemma")
     p_council.add_argument("prompt", type=str, help="Question or problem space")
+
+    # Command: tot (Tree of Thoughts)
+    p_tot = subparsers.add_parser("tot", help="Run Tree of Thoughts (ToT) exploration")
+    p_tot.add_argument("problem", type=str, help="Complex reasoning challenge")
+
+    # Command: got (Graph of Thoughts)
+    p_got = subparsers.add_parser("got", help="Run Graph of Thoughts (GoT) synthesis")
+    p_got.add_argument("problem", type=str, help="Problem requiring non-linear synthesis")
+
+    # Command: reflexion
+    p_ref = subparsers.add_parser("reflexion", help="Run verbal self-reflection and extract lessons")
+    p_ref.add_argument("action", type=str, help="Action or execution attempt to reflect upon")
+
+    # Command: mcts
+    p_mcts = subparsers.add_parser("mcts", help="Run Monte Carlo Tree Search planning")
+    p_mcts.add_argument("problem", type=str, help="Decision space state")
+
+    # Command: code
+    p_code = subparsers.add_parser("code", help="Code intelligence, AST parsing, testing, and debugging")
+    p_code.add_argument("action", choices=["analyze", "map", "test", "debug"], help="Coding action")
+    p_code.add_argument("target", nargs="?", default=".", help="File path, directory, or test command")
+
+    # Command: graphic
+    p_graph = subparsers.add_parser("graphic", help="Synthesize diagrams, SVGs, or Canvas UI")
+    p_graph.add_argument("action", choices=["diagram", "svg", "canvas"], help="Graphic asset type")
+    p_graph.add_argument("title", nargs="?", default="Architecture Overview", help="Asset title")
 
     # Command: status
     subparsers.add_parser("status", help="Inspect platform health, lanes, and recent traces")
@@ -104,7 +140,6 @@ def main(args: Optional[List[str]] = None):
         for s in plan.steps:
             print(f" [{s.step_id}] Lane: {s.lane:<10} | Intent: {s.intent:<15} | Risk: {s.risk_level}")
             print(f"     Action: {s.description}")
-            print(f"     Expected: {s.expected_postconditions}")
 
     elif parsed.command == "council":
         r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
@@ -117,9 +152,69 @@ def main(args: Optional[List[str]] = None):
         for op in delib["opinions"]:
             print(f"  • {op['persona']}: {op['recommendation']} (Conf: {op['confidence']})")
 
+    elif parsed.command == "tot":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        res = r_lane.tot.search(parsed.problem)
+        print("=" * 60)
+        print(f"🌳 Tree of Thoughts (Score: {res['best_score']} | Explored: {res['total_thoughts_explored']} nodes)")
+        print("=" * 60)
+        for i, step in enumerate(res["optimal_reasoning_path"], 1):
+            print(f"  [{i}] {step}")
+
+    elif parsed.command == "got":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        res = r_lane.got.solve_graph(parsed.problem)
+        print("=" * 60)
+        print(f"🕸️ Graph of Thoughts (Vertices: {res['vertex_count']} | Conf: {res['confidence']})")
+        print("=" * 60)
+        print(f"Execution Order: {' -> '.join(res['topological_order'])}")
+        print(f"Consensus: {res['final_consensus']}")
+
+    elif parsed.command == "reflexion":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        rec = r_lane.reflexion.reflect_on_trial(1, parsed.action, "Execution verified", True, parsed.action)
+        print("=" * 60)
+        print("🪞 Reflexion Self-Improvement Analysis")
+        print("=" * 60)
+        print(f"Reflection: {rec.reflection}")
+        print(f"Lesson Learned: {rec.lesson_learned}")
+
+    elif parsed.command == "mcts":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        actions = ["decompose", "formal_verify", "execute_step", "backtrack"]
+        res = r_lane.mcts.plan(parsed.problem, actions)
+        print("=" * 60)
+        print(f"🎲 Monte Carlo Tree Search ({res['simulations_run']} rollouts)")
+        print("=" * 60)
+        print(f"Optimal Action: {res['best_action']} (Expected Reward: {res['expected_reward']})")
+
+    elif parsed.command == "code":
+        c_lane: CodingLane = executor._lane_handlers["coding"]
+        from .core.planner import Step
+        intent_map = {"analyze": "analyze", "map": "repo_map", "test": "test", "debug": "debug"}
+        res = asyncio.run(c_lane.dispatch_step(Step(step_id=1, lane="coding", intent=intent_map[parsed.action], value=parsed.target)))
+        print("=" * 60)
+        print(f"💻 Coding Lane Result: [{parsed.action.upper()}]")
+        print("=" * 60)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "graphic":
+        g_lane: GraphicsLane = executor._lane_handlers["graphics"]
+        from .core.planner import Step
+        res = asyncio.run(g_lane.dispatch_step(Step(step_id=1, lane="graphics", intent=parsed.action, description=parsed.title)))
+        print("=" * 60)
+        print(f"🎨 Graphics Lane Result: [{parsed.action.upper()}]")
+        print("=" * 60)
+        if "diagram" in res:
+            print(res["diagram"])
+        elif "svg" in res:
+            print(f"Generated SVG markup ({len(res['svg'])} characters)")
+        elif "html" in res:
+            print(f"Generated HTML5/Canvas widget ({len(res['html'])} characters)")
+
     elif parsed.command == "status":
         print("=" * 60)
-        print("🌐 KOSIF Think Platform Health")
+        print("🌐 KOSIF Think Platform Health (6 Autonomous Lanes)")
         print("=" * 60)
         for lane, metrics in executor.router._lane_health.items():
             st = "🟢 Active" if metrics.get("available") and not metrics.get("circuit_open") else "🔴 Degraded"

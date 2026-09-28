@@ -15,13 +15,17 @@ from ..lanes.reasoning import ReasoningLane
 from ..lanes.computer import ComputerLane
 from ..lanes.browser import BrowserLane
 from ..lanes.whatsapp import WhatsAppLane
+from ..lanes.coding import CodingLane
+from ..lanes.graphics import GraphicsLane
 from ..core.cancellation import CancellationSource
 
 logger = logging.getLogger("kosif_think.server")
 
-# Global singleton executor with all lanes registered
+# Global singleton executor with all 6 lanes registered
 executor = ThinkExecutor()
 executor.register_lane("reasoning", ReasoningLane())
+executor.register_lane("coding", CodingLane())
+executor.register_lane("graphics", GraphicsLane())
 executor.register_lane("computer", ComputerLane())
 executor.register_lane("browser", BrowserLane())
 executor.register_lane("whatsapp", WhatsAppLane())
