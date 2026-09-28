@@ -1,6 +1,7 @@
 """
 Reasoning Lane Engine: Unifies Fast Heuristic, Multi-Agent Council,
-Tree of Thoughts (ToT), Graph of Thoughts (GoT), Reflexion, and Monte Carlo Tree Search (MCTS).
+Tree of Thoughts (ToT), Graph of Thoughts (GoT), Reflexion, MCTS,
+DSPy Optimization, Multi-Agent State Graphs, and Open-Source Repo Intelligence.
 """
 
 from typing import Dict, Any, Optional, List
@@ -11,6 +12,12 @@ from .tree_of_thoughts import TreeOfThoughts
 from .graph_of_thoughts import GraphOfThoughts
 from .reflexion import ReflexionEngine
 from .mcts import MCTSPlanner
+from .dspy_optimizer import DSPyOptimizer, DSPySignature
+from .multi_agent_graph import MultiAgentGraph
+from .repo_intelligence import RepoIntelligence
+from .cove import ChainOfVerification
+from .coala_memory import CoALAMemorySystem
+from .tournament_verifier import TournamentVerifier
 from ...core.cancellation import CancellationToken
 
 class ReasoningLane:
@@ -23,6 +30,12 @@ class ReasoningLane:
         self.got = GraphOfThoughts()
         self.reflexion = ReflexionEngine()
         self.mcts = MCTSPlanner()
+        self.dspy = DSPyOptimizer()
+        self.agent_graph = MultiAgentGraph()
+        self.repo_intel = RepoIntelligence()
+        self.cove = ChainOfVerification()
+        self.coala = CoALAMemorySystem()
+        self.tournament = TournamentVerifier()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Executes a reasoning step via the requested cognitive paradigm."""
@@ -43,7 +56,7 @@ class ReasoningLane:
             return res
 
         # 2. Graph of Thoughts Mode
-        elif "got" in intent or "graph" in intent:
+        elif ("got" in intent or "graph_of_thoughts" in intent or intent == "graph") and "agent" not in intent:
             res = self.got.solve_graph(goal)
             res["status"] = "ok"
             res["lane"] = "reasoning"
@@ -81,7 +94,71 @@ class ReasoningLane:
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res
 
-        # 5. Council Mode
+        # 5. DSPy Optimization Mode
+        elif "dspy" in intent or "teleprompter" in intent:
+            sig = DSPySignature("OptimizedReasoning", ["goal"], ["reasoning_plan", "invariants"], "Optimizes reasoning pipeline")
+            res = self.dspy.compile(sig, {"goal": goal})
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 6. Multi-Agent Graph Mode (LangGraph / AutoGen / CrewAI)
+        elif "agent_graph" in intent or "crew" in intent or "autogen" in intent or "langgraph" in intent:
+            res = self.agent_graph.run_graph(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 7. Open-Source Repo Intelligence
+        elif "repo_intel" in intent or "open_source" in intent or "github" in intent:
+            repos = self.repo_intel.search_github_repos(goal)
+            patterns = [self.repo_intel.ingest_architectural_pattern(r["full_name"]) for r in repos[:3]]
+            return {
+                "status": "ok",
+                "lane": "reasoning",
+                "mode": "repo_intelligence",
+                "matched_repos": repos,
+                "extracted_patterns": patterns,
+                "changed": True,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # 8. Chain-of-Verification (CoVe) Mode
+        elif "cove" in intent or "verification" in intent or "chain_of_verification" in intent:
+            res = self.cove.verify_and_synthesize(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 9. CoALA Cognitive Memory Mode
+        elif "coala" in intent or "memory" in intent or "episodic" in intent or "semantic" in intent or "procedural" in intent:
+            self.coala.set_working_focus(goal)
+            res = self.coala.retrieve_relevant_context(goal)
+            return {
+                "status": "ok",
+                "lane": "reasoning",
+                "mode": "coala_memory",
+                "memory_context": res,
+                "changed": True,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # 10. Tournament Verifier Mode
+        elif "tournament" in intent or "pairwise" in intent or "elimination" in intent:
+            res = self.tournament.run_tournament(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 11. Council Mode
         elif "council" in intent:
             deliberation = self.council.deliberate(goal, {})
             return {
@@ -93,7 +170,7 @@ class ReasoningLane:
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
             }
 
-        # 6. Fast Heuristic Mode (<5ms)
+        # 9. Fast Heuristic Mode (<5ms)
         else:
             return {
                 "status": "ok",

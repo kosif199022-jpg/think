@@ -1,13 +1,13 @@
 """
 Capability Router: Selects the optimal execution lane and adapter based on intent,
-surface health, measured latency, and circuit breaker states across all 6 lanes.
+surface health, measured latency, and circuit breaker states across all 7 lanes.
 """
 
 from typing import Dict, Any, List, Optional
 import time
 
 class CapabilityRouter:
-    """Manages adaptive lane routing and health metrics across 6 lanes."""
+    """Manages adaptive lane routing and health metrics across 7 lanes."""
 
     def __init__(self):
         self._lane_health: Dict[str, Dict[str, Any]] = {
@@ -17,6 +17,7 @@ class CapabilityRouter:
             "computer": {"available": True, "latency_ms": 35.0, "failure_count": 0, "circuit_open": False},
             "browser": {"available": True, "latency_ms": 45.0, "failure_count": 0, "circuit_open": False},
             "whatsapp": {"available": True, "latency_ms": 60.0, "failure_count": 0, "circuit_open": False},
+            "ios": {"available": True, "latency_ms": 40.0, "failure_count": 0, "circuit_open": False},
         }
 
     def route_step(self, lane_preference: str, intent: str) -> str:
@@ -36,6 +37,8 @@ class CapabilityRouter:
             return "computer"
         elif lane == "graphics":
             return "coding"
+        elif lane == "ios":
+            return "computer"
         return "reasoning"
 
     def record_lane_metric(self, lane: str, success: bool, latency_ms: float):

@@ -51,14 +51,49 @@ class TaskPlanner:
         steps: List[Step] = []
 
         # Analyze intent patterns
+        is_ios = bool(re.search(r'(?:آيفون|ايفون|iphone|ios|سيري|siri|تطبيق الجوال|اختصارات|shortcut|shortcuts)', goal, re.I))
         is_whatsapp = bool(re.search(r'\b(whatsapp|واتساب|واتس|رسالة|ارسل لـ|شات)\b', goal, re.I))
         is_coding = bool(re.search(r'\b(كود|برمجة|دالة|اختبار|فحص الكود|صلح|أصلح|fix|test|debug|ast|patch|refactor|python|code|repo_map)\b', goal, re.I))
         is_graphics = bool(re.search(r'\b(رسم|جرافيك|مخطط|دياجرام|diagram|mermaid|svg|canvas|واجهة|تصميم|flowchart|dashboard)\b', goal, re.I))
         is_computer = bool(re.search(r'\b(افتح برنامج|شغل تطبيق|ملف|مفكرة|notepad|calc|word|excel|سطح المكتب|وندوز)\b', goal, re.I))
         is_browser = bool(re.search(r'\b(تصفح|موقع|رابط|ابحث عن|google|chrome|url|http|كابتشا|صفحة|يوتيوب)\b', goal, re.I))
 
+        # 0. iOS Lane Plan
+        if is_ios:
+            if any(k in goal.lower() for k in ["تحدث", "قل", "انطق", "speak", "say"]):
+                intent = "speak"
+                desc = "نطق نص صوتي عبر Siri على الآيفون"
+            elif any(k in goal.lower() for k in ["إشعار", "اشعار", "تنبيه", "notify", "notification"]):
+                intent = "notify"
+                desc = "إرسال إشعار فوري إلى جهاز الآيفون"
+            elif any(k in goal.lower() for k in ["اختصار", "shortcut"]):
+                intent = "shortcut"
+                desc = "تشغيل اختصار آبل محدد على الآيفون"
+            elif any(k in goal.lower() for k in ["انقر", "اضغط", "لمس", "tap", "touch"]):
+                intent = "tap"
+                desc = "محاكاة لمس ونقر على شاشة الآيفون"
+            elif any(k in goal.lower() for k in ["هوم", "home"]):
+                intent = "home"
+                desc = "الضغط على زر الشاشة الرئيسية في الآيفون"
+            else:
+                intent = "open_app"
+                app_m = re.search(r'(?:تطبيق|برنامج|open|app)\s+([a-zA-Z0-9_\-\u0621-\u064A]+)', goal)
+                app_name = app_m.group(1) if app_m else "Safari"
+                desc = f"فتح تطبيق {app_name} على جهاز الآيفون"
+
+            steps.append(Step(
+                step_id=1,
+                lane="ios",
+                intent=intent,
+                target=Target(kind="ios_device", ref=goal),
+                value=goal,
+                expected_postconditions=[{"type": "ios_command_acknowledged"}],
+                risk_level="low",
+                description=desc
+            ))
+
         # 1. Coding Lane Plan
-        if is_coding and not is_whatsapp:
+        elif is_coding and not is_whatsapp:
             if any(k in goal.lower() for k in ["test", "اختبار", "شغل الاختبارات"]):
                 intent = "test"
                 desc = "تشغيل حزمة الاختبارات وفحص حالة الأكواد"

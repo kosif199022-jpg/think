@@ -1,5 +1,5 @@
 """
-Reasoning lane package: Fast, Council, Cognitive, Tree of Thoughts, Graph of Thoughts, Reflexion, MCTS.
+Reasoning lane package: Fast, Council, Cognitive, ToT, GoT, Reflexion, MCTS, DSPy, MultiAgentGraph, RepoIntelligence.
 """
 
 from .engine import ReasoningLane
@@ -9,6 +9,12 @@ from .tree_of_thoughts import TreeOfThoughts
 from .graph_of_thoughts import GraphOfThoughts
 from .reflexion import ReflexionEngine
 from .mcts import MCTSPlanner
+from .dspy_optimizer import DSPyOptimizer, DSPySignature
+from .multi_agent_graph import MultiAgentGraph
+from .repo_intelligence import RepoIntelligence
+from .cove import ChainOfVerification
+from .coala_memory import CoALAMemorySystem
+from .tournament_verifier import TournamentVerifier, CandidateSolution
 
 __all__ = [
     "ReasoningLane",
@@ -18,4 +24,12 @@ __all__ = [
     "GraphOfThoughts",
     "ReflexionEngine",
     "MCTSPlanner",
+    "DSPyOptimizer",
+    "DSPySignature",
+    "MultiAgentGraph",
+    "RepoIntelligence",
+    "ChainOfVerification",
+    "CoALAMemorySystem",
+    "TournamentVerifier",
+    "CandidateSolution",
 ]
