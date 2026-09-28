@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kosif-think"
+version = "1.0.0"
+description = "Unified orchestration and execution platform for KOSIF - reasoning, computer control, browser automation, and verification."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "kosif199022-jpg", email = "kosif199022@gmail.com" }
+]
+keywords = [
+    "kosif", "think", "browser-automation", "computer-use", "jev", "agents", "mcp"
+]
+dependencies = [
+    "pydantic>=2.0.0"
+]
+
+[project.optional-dependencies]
+full = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "playwright>=1.40.0"
+]
+dev = [
+    "pytest>=7.0.0"
+]
+
+[project.scripts]
+think = "kosif_think.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
