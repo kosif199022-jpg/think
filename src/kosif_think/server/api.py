@@ -19,13 +19,15 @@ from ..lanes.computer import ComputerLane
 from ..lanes.browser import BrowserLane
 from ..lanes.whatsapp import WhatsAppLane
 from ..lanes.ios import IOSLane
+from ..lanes.voice import VoiceLane
+from ..lanes.browser.cloud_view import render_cloud_browser_html
 from ..connectors.openai_bridge import OpenAIBridge
 from ..connectors.app_hub import AppHub
 from ..core.cancellation import CancellationSource
 
 logger = logging.getLogger("kosif_think.server")
 
-# Global singleton executor with all 7 lanes registered
+# Global singleton executor with all 8 lanes registered
 executor = ThinkExecutor()
 executor.register_lane("reasoning", ReasoningLane())
 executor.register_lane("coding", CodingLane())
@@ -34,6 +36,7 @@ executor.register_lane("computer", ComputerLane())
 executor.register_lane("browser", BrowserLane())
 executor.register_lane("whatsapp", WhatsAppLane())
 executor.register_lane("ios", IOSLane())
+executor.register_lane("voice", VoiceLane())
 
 # Connectors
 openai_bridge = OpenAIBridge(executor)
@@ -53,6 +56,15 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _send_html(self, status_code: int, html_str: str):
+        raw = html_str.encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(raw)
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -68,8 +80,8 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {
                 "ok": True,
                 "service": "KOSIF Think Super-Intelligence Platform",
-                "version": "1.1.0",
-                "lanes": ["reasoning", "coding", "graphics", "computer", "browser", "whatsapp", "ios"],
+                "version": "1.2.0",
+                "lanes": ["reasoning", "coding", "graphics", "computer", "browser", "whatsapp", "ios", "voice"],
                 "chatgpt_bridge": True,
                 "iphone_control": True,
                 "active": True
@@ -105,6 +117,32 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             ios_lane: IOSLane = executor._lane_handlers["ios"]
             actions = ios_lane.shortcuts.poll_pending_actions(dev_id)
             self._send_json(200, {"ok": True, "actions": actions})
+
+        # Cloud Browser Sessions
+        elif path == "/api/browser/sessions":
+            b_lane: BrowserLane = executor._lane_handlers["browser"]
+            self._send_json(200, {"ok": True, "sessions": b_lane.cloud_manager.list_sessions()})
+
+        # Cloud Browser View (HTML5 Remote Viewer)
+        elif path.startswith("/api/browser/session/") and path.endswith("/view"):
+            b_lane: BrowserLane = executor._lane_handlers["browser"]
+            session = b_lane.cloud_manager.get_or_create_default()
+            html_markup = render_cloud_browser_html(session.to_dict())
+            self._send_html(200, html_markup)
+
+        # Cloud Browser State
+        elif path.startswith("/api/browser/session/") and path.endswith("/state"):
+            b_lane: BrowserLane = executor._lane_handlers["browser"]
+            self._send_json(200, b_lane.jev_cloud.get_cloud_state("default"))
+
+        # Thought Map View (Interactive HTML5 Canvas)
+        elif path.startswith("/api/think/thought-map") and path.endswith("/view"):
+            qs = parse_qs(parsed.query)
+            goal = qs.get("goal", ["Autonomous Super-Intelligence Architecture"])[0]
+            from ..lanes.reasoning.thought_map import CognitiveThoughtMap
+            tmap = CognitiveThoughtMap()
+            tmap.build_from_goal(goal)
+            self._send_html(200, tmap.to_interactive_html())
 
         else:
             self._send_json(404, {"ok": False, "error": "Endpoint not found"})
@@ -169,6 +207,56 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             ios_lane: IOSLane = executor._lane_handlers["ios"]
             res = ios_lane.shortcuts.report_action_result(cmd_id, result_data)
             self._send_json(200, res)
+
+        # Cloud Browser Action Dispatch
+        elif path.startswith("/api/browser/session/") and path.endswith("/action"):
+            b_lane: BrowserLane = executor._lane_handlers["browser"]
+            act = payload.get("action", "navigate")
+            if act == "navigate":
+                res = b_lane.jev_cloud.navigate("default", payload.get("url", "https://www.google.com"))
+            elif act == "click":
+                res = b_lane.jev_cloud.click_jev("default", payload.get("action_id", "a_btn_1"))
+            elif act == "type":
+                res = b_lane.jev_cloud.type_human("default", payload.get("action_id", "a_input_1"), payload.get("text", ""))
+            elif act == "scroll":
+                res = b_lane.jev_cloud.scroll_jev("default", payload.get("amount", 400), payload.get("direction", "down"))
+            elif act in ("auto_goal", "jev_goal"):
+                res = b_lane.jev_cloud.run_autonomous_goal("default", payload.get("goal", ""))
+            else:
+                res = {"error": f"Unknown action: {act}"}
+            self._send_json(200, res)
+
+        # Cloud Browser Scrape
+        elif path.startswith("/api/browser/session/") and path.endswith("/scrape"):
+            b_lane: BrowserLane = executor._lane_handlers["browser"]
+            html_str = payload.get("html", "")
+            meta = b_lane.scraper.extract_metadata(html_str)
+            tables = b_lane.scraper.extract_tables(html_str)
+            md = b_lane.scraper.html_to_markdown(html_str)
+            self._send_json(200, {"ok": True, "metadata": meta, "tables": tables, "markdown": md})
+
+        # Deep Thinking Long-CoT Endpoint
+        elif path in ("/api/think/deep", "/api/v1/deep_think"):
+            r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+            prob = payload.get("problem") or payload.get("goal") or ""
+            effort = payload.get("effort", "high")
+            res = r_lane.deep_think.deliberate(prob, compute_budget_effort=effort)
+            self._send_json(200, res)
+
+        # Cognitive Thought Map Endpoint
+        elif path in ("/api/think/thought-map", "/api/v1/thought_map"):
+            goal = payload.get("goal") or payload.get("problem") or "Autonomous Super-Intelligence Architecture"
+            from ..lanes.reasoning.thought_map import CognitiveThoughtMap
+            tmap = CognitiveThoughtMap()
+            tmap.build_from_goal(goal)
+            self._send_json(200, {
+                "ok": True,
+                "map_id": tmap.map_id,
+                "data": tmap.to_dict(),
+                "mermaid": tmap.to_mermaid_mindmap(),
+                "ascii_tree": tmap.to_ascii_tree(),
+                "critical_path": tmap.find_critical_path()
+            })
 
         elif path == "/api/think/plan":
             goal = payload.get("goal") or payload.get("prompt") or ""

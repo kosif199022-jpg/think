@@ -18,6 +18,9 @@ from .tournament_verifier import TournamentVerifier, CandidateSolution
 from .self_consistency import SelfConsistencyEngine, ReasoningPath
 from .react_engine import ReActEngine, ReActStep
 from .rag_engine import AgenticRAGEngine, BM25Index, Document
+from .deep_think import DeepThinkingEngine, DeepThoughtPhase
+from .symbolic_verifier import SymbolicVerifier
+from .thought_map import CognitiveThoughtMap, ThoughtMapNode, ThoughtNodeCategory
 
 __all__ = [
     "ReasoningLane",
@@ -42,4 +45,10 @@ __all__ = [
     "AgenticRAGEngine",
     "BM25Index",
     "Document",
+    "DeepThinkingEngine",
+    "DeepThoughtPhase",
+    "SymbolicVerifier",
+    "CognitiveThoughtMap",
+    "ThoughtMapNode",
+    "ThoughtNodeCategory",
 ]

@@ -18,6 +18,7 @@ class CapabilityRouter:
             "browser": {"available": True, "latency_ms": 45.0, "failure_count": 0, "circuit_open": False},
             "whatsapp": {"available": True, "latency_ms": 60.0, "failure_count": 0, "circuit_open": False},
             "ios": {"available": True, "latency_ms": 40.0, "failure_count": 0, "circuit_open": False},
+            "voice": {"available": True, "latency_ms": 25.0, "failure_count": 0, "circuit_open": False},
         }
 
     def route_step(self, lane_preference: str, intent: str) -> str:
@@ -39,6 +40,8 @@ class CapabilityRouter:
             return "coding"
         elif lane == "ios":
             return "computer"
+        elif lane == "voice":
+            return "reasoning"
         return "reasoning"
 
     def record_lane_metric(self, lane: str, success: bool, latency_ms: float):

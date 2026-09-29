@@ -28,6 +28,7 @@ class Step:
     risk_level: str = "auto"
     timeout_ms: int = 15000
     description: str = ""
+    args: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Plan:
@@ -53,10 +54,11 @@ class TaskPlanner:
         # Analyze intent patterns
         is_ios = bool(re.search(r'(?:آيفون|ايفون|iphone|ios|سيري|siri|تطبيق الجوال|اختصارات|shortcut|shortcuts)', goal, re.I))
         is_whatsapp = bool(re.search(r'\b(whatsapp|واتساب|واتس|رسالة|ارسل لـ|شات)\b', goal, re.I))
+        is_voice = bool(re.search(r'\b(صوت|تحدث|نطق|انطق|تكلم|audio|voice|speech|tts|stt|whisper)\b', goal, re.I)) and not is_ios
         is_coding = bool(re.search(r'\b(كود|برمجة|دالة|اختبار|فحص الكود|صلح|أصلح|fix|test|debug|ast|patch|refactor|python|code|repo_map)\b', goal, re.I))
         is_graphics = bool(re.search(r'\b(رسم|جرافيك|مخطط|دياجرام|diagram|mermaid|svg|canvas|واجهة|تصميم|flowchart|dashboard)\b', goal, re.I))
         is_computer = bool(re.search(r'\b(افتح برنامج|شغل تطبيق|ملف|مفكرة|notepad|calc|word|excel|سطح المكتب|وندوز)\b', goal, re.I))
-        is_browser = bool(re.search(r'\b(تصفح|موقع|رابط|ابحث عن|google|chrome|url|http|كابتشا|صفحة|يوتيوب)\b', goal, re.I))
+        is_browser = bool(re.search(r'\b(تصفح|موقع|رابط|ابحث عن|google|chrome|url|http|كابتشا|صفحة|يوتيوب|متصفح سحابي|سحابي)\b', goal, re.I))
 
         # 0. iOS Lane Plan
         if is_ios:
@@ -90,6 +92,19 @@ class TaskPlanner:
                 expected_postconditions=[{"type": "ios_command_acknowledged"}],
                 risk_level="low",
                 description=desc
+            ))
+
+        # 0.5 Voice Lane Plan
+        elif is_voice:
+            steps.append(Step(
+                step_id=1,
+                lane="voice",
+                intent="speak",
+                target=Target(kind="voice_synthesizer", ref="tts"),
+                value=goal,
+                expected_postconditions=[{"type": "voice_spoken"}],
+                risk_level="low",
+                description="توليد ونطق المخرجات الصوتية عبر Voice Lane"
             ))
 
         # 1. Coding Lane Plan

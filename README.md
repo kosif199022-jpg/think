@@ -1,24 +1,25 @@
-# 🧠 KOSIF Think (Super-Intelligence Edition)
+# 🧠 KOSIF Think (Super-Intelligence & Cloud Edition)
 
-**Unified Hyper-Intelligent Orchestration & Autonomous Execution Platform for KOSIF**
+**Unified Hyper-Intelligent Cognitive Orchestration, Jev Cloud Browser, & Autonomous Execution Platform for KOSIF**
 
-[![Tests](https://img.shields.io/badge/tests-52%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-64%20passed-brightgreen.svg)]()
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)]()
-[![Architecture](https://img.shields.io/badge/architecture-7--Autonomous--Lanes-orange.svg)]()
-[![Cognitive](https://img.shields.io/badge/cognitive-CoVe%20%7C%20CoALA%20%7C%20ReAct%20%7C%20Self--Consistency-purple.svg)]()
-[![RAG](https://img.shields.io/badge/rag-BM25%20%7C%20HyDE%20%7C%20Zero--Dependency-darkgreen.svg)]()
-[![Safety](https://img.shields.io/badge/safety-Guardrails%20%7C%20Canary%20%7C%20PII%20Masker-red.svg)]()
+[![Architecture](https://img.shields.io/badge/architecture-8--Autonomous--Lanes-orange.svg)]()
+[![Cognitive](https://img.shields.io/badge/cognitive-Long--CoT%20%7C%20Thought--Maps%20%7C%20GraphRAG%20%7C%20Bayesian-purple.svg)]()
+[![Cloud Browser](https://img.shields.io/badge/cloud--browser-Jev%20Canvas%20%7C%20Stealth%20Bezier-blue.svg)]()
+[![Safety](https://img.shields.io/badge/safety-Guardrails%20%7C%20Canary%20%7C%20Symbolic%20SAT-red.svg)]()
 [![iOS](https://img.shields.io/badge/ios-Shortcuts%20%7C%20WDA%20%7C%20Siri-black.svg)]()
 [![OpenAI Compatible](https://img.shields.io/badge/api-OpenAI%20%7C%20ChatGPT%20Actions-teal.svg)]()
 
 ---
 
-## 🎯 Super-Intelligent Architecture
+## 🎯 8 Autonomous Execution Lanes
 
-**KOSIF Think** unites the most powerful open-source cognitive and execution paradigms into a pure Python 3.10+ standard library platform (zero heavy external dependencies):
-
-1. **Cognitive Reasoning**:
-   - **Self-Consistency & Majority Voting**: DeepMind-inspired sampling across diverse cognitive perspectives with Shannon entropy metrics.
+1. **Reasoning Lane** (`reasoning`):
+   - **Cognitive Thought Maps (Mind Maps)**: Hierarchical mental trees with dynamic hypothesis branching, Bayesian belief propagation ($P(H|E) = \frac{P(E|H)P(H)}{P(E)}$), branch pruning, interactive HTML5 canvas visualization, and Mermaid `mindmap` exports.
+   - **Deep Thinking & Long-CoT**: DeepSeek-R1 / OpenAI o1 deliberation with explicit `<think>` buffers, hypothesis branching, and recursive backtracking.
+   - **Formal Symbolic Verifier**: Propositional logic SAT truth tables, quadratic/linear solvers, interval bounds, and multi-dimensional unit conversions.
+   - **Self-Consistency & Majority Voting**: DeepMind-inspired sampling across diverse cognitive trajectories with Shannon entropy metrics.
    - **ReAct Loop**: Princeton/Google Brain Thought-Action-Observation iterative loop with dynamic ToolRegistry.
    - **Chain-of-Verification (CoVe)**: Meta AI 4-phase hallucination-elimination pipeline.
    - **CoALA Cognitive Memory**: Princeton/DeepMind 4-tier human-like memory (Working, Episodic, Semantic, Procedural).
@@ -27,112 +28,95 @@
    - **Multi-Agent Cyclic Graph**: LangGraph / AutoGen state machine (Supervisor, Researcher, Coder, Critic).
    - **Tree of Thoughts (ToT)** & **Graph of Thoughts (GoT)** & **Reflexion** & **MCTS**.
 
-2. **Agentic RAG & Workspace Search**:
-   - **Okapi BM25 Inverted Index**: Sub-millisecond ranking over knowledge bases and code repositories.
-   - **HyDE Query Expansion**: Generates hypothetical answer passages to bridge lexical vocabulary gaps.
-   - **Ripgrep-Style Workspace Search**: Multi-threaded regex content search with context lines, symbol lookup, and directory tree visualization.
+2. **Jev Cloud Browser Lane** (`browser`):
+   - **Remote Virtual Canvas Dashboard**: HTML5/Canvas live viewer with superimposed numeric badges `[1]`, `[2]`, `[3]` (`/api/browser/session/{id}/view`).
+   - **Anti-Bot Stealth Profile**: Cubic Bezier mouse curves with natural overshoot and micro-jitter, human typing cadence with inter-character delays, and `navigator.webdriver` evasion.
+   - **Autonomous Jev Orchestrator**: Multi-step goal resolution with anti-loop recovery and viewport scroll unwinding.
+   - **Structured Web Scraper**: High-speed table extraction into JSON dictionaries, OpenGraph metadata parsing, and HTML-to-Markdown conversion.
 
-3. **Autonomous Software Engineering & TDD**:
+3. **Coding Lane** (`coding`):
    - **Test-Driven Development (TDD) Synthesizer**: Red-Green-Refactor loop generating formal `unittest` contracts and auto-repairing implementations in isolated sandboxes.
+   - **Ripgrep-Style Workspace Search**: Multi-threaded regex content search with context lines, symbol lookup, and directory tree visualization.
    - **AST Parsing & Repo Mapping**: Cyclomatic complexity, symbol tables, and PageRank codebase graphs.
-   - **Atomic Patcher**: Unified diffs and fuzzy patch replacements.
 
-4. **Multimodal GUI & Computer Grounding**:
-   - **GUI Element Grounding**: OS-World / UI-TARS element locator mapping natural language ("click confirm payment") to exact click coordinates `(x, y)` and visual affordances.
+4. **Computer Lane** (`computer`):
+   - **GUI Element Grounding**: OS-World / UI-TARS element locator mapping natural language instructions ("click confirm payment") to exact click coordinates `(x, y)`.
    - **Windows Desktop Automation**: Windows UIA, application lifecycle, file I/O, and active window verification.
 
-5. **AI Safety & Defense-in-Depth**:
-   - **Guardrails Firewall**: Defends against prompt injections, system prompt leaks, and jailbreaks.
-   - **Canary Token Defense**: Tracks internal canary secrets and halts outputs on detection.
-   - **Automatic PII Masker**: Redacts credit cards, API keys (OpenAI, AWS, GitHub), JWTs, passwords, emails, and phone numbers.
+5. **Graphics Lane** (`graphics`):
+   - Synthesis of Mermaid architecture diagrams, responsive SVGs, and standalone HTML5 Canvas visualization widgets.
 
-6. **Declarative DAG Workflow Orchestration**:
-   - **DAG Pipeline Engine**: Concurrent multi-stage task pipelines with cycle validation, dependency resolution, parameter passing, and exponential backoff retries.
+6. **WhatsApp Lane** (`whatsapp`):
+   - Automated WhatsApp Web messaging, group broadcasts, and contact interactions.
 
-7. **ChatGPT & Multi-App Connectors**:
-   - **OpenAI Compatible Bridge**: Native `/v1/chat/completions` and `/v1/models` endpoints.
-   - **Custom GPT Actions**: Dynamic OpenAPI 3.0 specification generated at `/openapi.json`.
-   - **Multi-App Hub**: Webhook dispatchers for Discord, Telegram, Slack, and n8n.
-
-8. **iPhone & iOS Automation**:
+7. **iOS & iPhone Lane** (`ios`):
    - **Apple Shortcuts Bridge**: Direct execution via `shortcuts://` URL schemes.
    - **Siri Voice Synthesis & Push Notifications**.
    - **WDA Client & Long-Polling Server**: Queues tasks at `/api/ios/poll` and receives proof at `/api/ios/ack`.
 
----
-
-## 🏗️ 7-Lane Architecture & Core Loop
-
-```mermaid
-flowchart TD
-    User["👤 User Goal / ChatGPT / Multi-App Webhook"] --> Guard["🛡️ Guardrails & Preflight<br/>(Injection Scan, PII Redaction, Canary Guard)"]
-    Guard --> Planner["📋 Task Planner<br/>(Decomposition & Contract Generation)"]
-    Planner --> Router["🔀 Capability Router<br/>(Adaptive 7-Lane Scoring & Circuit Breakers)"]
-    Router --> RiskGate{"⚠️ Risk Gate<br/>(Low / Med / High / Critical)"}
-    
-    RiskGate -- "CAPTCHA / OTP / Payments" --> Checkpoint["🛑 Human Checkpoint<br/>(Pause & Prompt User)"]
-    RiskGate -- "Approved / Safe" --> Lanes["🚀 7 Execution Lanes"]
-    
-    subgraph Lanes["7 Autonomous Execution Lanes"]
-        L1["🧠 Reasoning Lane<br/>(Self-Consistency, ReAct, RAG, CoVe, CoALA, Tournament, DSPy, ToT, GoT)"]
-        L2["💻 Coding Lane<br/>(TDD Synthesizer, AST, Repo Search, Patcher, Sandbox, Debugger)"]
-        L3["🎨 Graphics Lane<br/>(SVG, Mermaid, Canvas, Layout Analyzer)"]
-        L4["🖥️ Computer Lane<br/>(GUI Grounding, Windows UIA, Apps, Files, Active Windows)"]
-        L5["🌐 Browser Lane<br/>(Jev Action Graph, CDP, Anti-Loop Breaker)"]
-        L6["📱 WhatsApp Lane<br/>(Bridge, Dispatch, Delivery Verifier)"]
-        L7["📲 iOS Lane<br/>(Apple Shortcuts, Siri, URL Schemes, WDA)"]
-    end
-    
-    Lanes --> Verifier{"🔍 Observable Verifier<br/>(DOM, URL, Files, Process, Tests, GUI Delta)"}
-    Verifier -- "Verified Delta" --> Success["✅ Task Completed"]
-    Verifier -- "Stuck / Failed" --> Recovery["🔄 Recovery Engine<br/>(Loop Breaking / Viewport Scroll / Reroute)"]
-    Recovery --> Lanes
-    
-    Success --> Audit["📜 Structured Audit Logger (JSONL)"]
-```
+8. **Voice Lane** (`voice`):
+   - **Text-to-Speech (TTS)**: Windows SAPI PowerShell voice triggers and streaming audio synthesis.
+   - **SSML Formatter**: Structured Speech Synthesis Markup Language with prosody, rate, and voice pitch controls.
+   - **Speech-to-Text (STT)**: Audio format validation and OpenAI Whisper-compatible transcriptions.
 
 ---
 
-## 💻 CLI Super-Tools
+## 🌐 Cognitive Knowledge Graph & LLM Router
+
+- **Cognitive Knowledge Graph (GraphRAG)** (`knowledge_graph.py`):
+  Stores entities and semantic triples (Subject-Predicate-Object), extracts k-hop ego-graph neighborhoods, calculates shortest paths using BFS, and renders Mermaid flowcharts.
+- **Multi-Provider LLM Router** (`llm_router.py`):
+  Automatic failover cascade across OpenAI, Anthropic, Gemini, and Local Ollama, with real-time token tracking and hard USD session budget limits.
+- **AI Safety & Defense-in-Depth** (`guardrails.py`):
+  Prompt injection defense, canary secret detection, and automatic PII masking (credit cards, API keys, passwords, emails).
+
+---
+
+## ⚡ Unified CLI Commands
 
 ```bash
-# 1. Self-Consistency & Majority Voting (DeepMind)
-think consistency "Design resilient event-driven architecture"
+# 1. Cognitive Thought Map (Mental Mind Map)
+think thought-map "Architect Byzantine fault-tolerant autonomous agent consensus"
+think thought-map "Microservices Migration" --format mermaid
+think thought-map "Distributed Storage" --format html
 
-# 2. ReAct Autonomous Reasoning & Tool Actions
-think react "Diagnose memory spike in Redis cache cluster"
+# 2. Long-CoT Deep Thinking Deliberation (<think> buffer)
+think deep-think "Solve optimal pathfinding with Byzantine constraints"
 
-# 3. Agentic RAG & Okapi BM25 Knowledge Retrieval
-think rag "iPhone Shortcuts polling"
+# 3. Formal Symbolic Verifier (SAT, Equations, Units)
+think symbolic "A and (B or not C)" --action sat
+think symbolic "x^2 - 5x + 6 = 0" --action quadratic
+think symbolic "100 km" --action convert --from-unit km --to-unit m
 
-# 4. Multimodal GUI Element Grounding (Target Coordinates)
-think ground "click Confirm Payment"
+# 4. Jev Cloud Browser
+think cloud-browser navigate "https://github.com/kosif199022-jpg/think"
+think cloud-browser click "[1]"
+think cloud-browser type "Autonomous AI Agent"
+think cloud-browser auto "Find machine learning releases"
+think cloud-browser state
 
-# 5. AI Safety Guardrails & PII Inspection
-think guard "Send keys to ceo@company.com with card 4111 2222 3333 4444"
+# 5. Cognitive Knowledge Graph (GraphRAG)
+think kg query "kosif_think"
+think kg mermaid
+think kg stats
 
-# 6. Test-Driven Development (TDD) Autonomous Synthesis
-think code tdd "Safe URL slug generator"
+# 6. Voice Synthesis & Transcription
+think voice speak "النظام الذكي الفائق جاهز للعمل"
+think voice ssml "KOSIF Intelligence Online"
 
-# 7. Workspace Content Regex Search (Ripgrep style)
-think code search "GuardrailsSystem"
-think code symbols "ReasoningLane"
+# 7. Self-Consistency & ReAct
+think consistency "Design high-throughput distributed message broker"
+think react "Analyze latency spike in payment lane"
+
+# 8. Workspace Search & Code Intelligence
+think code search "ReasoningLane"
 think code tree "src/kosif_think"
 
-# 8. Chain-of-Verification (CoVe)
-think cove "Autonomous code deployment is free of defects"
-
-# 9. CoALA Cognitive Memory
-think coala "browser payment safety"
-
-# 10. Tournament Verifier
-think tournament "Optimize database latency under 10k RPS"
-
-# 11. iPhone Automation (Shortcuts / Siri / Apps)
-think ios speak "مرحباً بك، تم تنفيذ العملية بنجاح على الآيفون"
+# 9. iPhone Automation (Shortcuts / Siri / Apps)
+think ios speak "تم تنفيذ المهمة بنجاح"
 think ios app "WhatsApp"
 
-# 12. Platform Status & Server
+# 10. Platform Status & Server
 think status
 think server --port 49400
 ```
@@ -146,27 +130,17 @@ think server --port 49400
 | `/v1/chat/completions` | `POST` | OpenAI-compatible endpoint for ChatGPT & OpenAI clients |
 | `/v1/models` | `GET` | Lists available KOSIF Think cognitive models |
 | `/openapi.json` | `GET` | OpenAPI 3.0 specification for Custom GPT Actions |
+| `/api/browser/sessions` | `GET` | List active cloud browser sessions |
+| `/api/browser/session/{id}/view` | `GET` | Interactive HTML5 virtual canvas streaming dashboard |
+| `/api/browser/session/{id}/action` | `POST` | Dispatch Jev cloud actions (navigate, click, type, scroll, auto) |
+| `/api/browser/session/{id}/scrape` | `POST` | Extract structured tables, metadata, and markdown |
+| `/api/think/deep` | `POST` | Execute Long-CoT deliberation with `<think>` trace |
+| `/api/think/thought-map` | `POST` | Synthesize hierarchical cognitive thought map |
+| `/api/think/thought-map/view` | `GET` | Standalone interactive HTML5 mind map widget |
 | `/api/ios/poll` | `GET` | Long-polling endpoint for iOS Shortcuts / Companion |
 | `/api/ios/ack` | `POST` | Acknowledge iOS action execution with observable proof |
-| `/api/ios/action` | `POST` | Enqueue an iPhone action (Siri, Shortcuts, Tap, App) |
-| `/api/think/plan` | `POST` | Decompose goal into execution contract |
-| `/api/think/execute` | `POST` | Execute goal through the complete pipeline |
-| `/api/think/status` | `GET` | Circuit breaker status & latency metrics across all 7 lanes |
-| `/health` | `GET` | Health check & 7 active lanes status |
-
----
-
-## 🔌 Model Context Protocol (MCP) Standard Tools
-
-The platform provides built-in stdio Model Context Protocol (MCP) support via `think mcp`:
-- `think_execute`: Full multi-lane goal execution.
-- `think_self_consistency`: Majority voting across diverse cognitive trajectories.
-- `think_react`: Interactive Thought-Action-Observation loop.
-- `think_rag_search`: Okapi BM25 and HyDE document search.
-- `think_gui_ground`: Locate target screen coordinates `(x, y)` for UI instructions.
-- `think_guardrails_scan`: Prompt injection defense and PII credential masking.
-- `think_code_action`: AST parsing, repo mapping, regex search, symbol lookup, tree, and TDD loop.
-- `think_tree_of_thoughts` & `think_council` & `think_render_graphic`.
+| `/api/think/status` | `GET` | Circuit breaker status & latency metrics across all 8 lanes |
+| `/health` | `GET` | Health check & 8 active lanes status |
 
 ---
 
@@ -175,4 +149,4 @@ The platform provides built-in stdio Model Context Protocol (MCP) support via `t
 ```bash
 python -c "import sys, unittest; sys.path.insert(0, 'src'); unittest.main(module=None, argv=['unittest', 'discover', 'tests'])"
 ```
-**Results:** `Ran 52 tests in 2.795s - OK` (100% Passing).
+**Results:** `Ran 64 tests in 2.213s - OK` (100% Passing).

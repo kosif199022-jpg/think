@@ -26,6 +26,7 @@ from .computer import ComputerLane, AppControl, FileControl, ScreenState
 from .browser import BrowserLane, ActionGraph, JevDecisionRouter, PlaywrightCDPClient
 from .whatsapp import WhatsAppLane, WhatsAppBridge
 from .ios import IOSLane, ShortcutsBridge, WDAClient
+from .voice import VoiceLane, VoiceSynthesizer, AudioTranscriber
 
 __all__ = [
     "ReasoningLane",
@@ -63,4 +64,7 @@ __all__ = [
     "IOSLane",
     "ShortcutsBridge",
     "WDAClient",
+    "VoiceLane",
+    "VoiceSynthesizer",
+    "AudioTranscriber",
 ]

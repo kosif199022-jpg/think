@@ -8,15 +8,21 @@ import time
 from .action_graph import ActionGraph, INDEX_JS
 from .jev_router import JevDecisionRouter
 from .playwright_cdp import PlaywrightCDPClient
+from .cloud_session import CloudSessionManager
+from .jev_controller import JevCloudController
+from .jev_scraper import JevWebScraper
 from ...core.cancellation import CancellationToken
 
 class BrowserLane:
-    """Unified handler for the browser execution lane."""
+    """Unified handler for the browser execution lane with Jev Cloud Control."""
 
     def __init__(self):
         self.action_graph = ActionGraph()
         self.jev_router = JevDecisionRouter()
         self.cdp_client = PlaywrightCDPClient()
+        self.cloud_manager = CloudSessionManager()
+        self.jev_cloud = JevCloudController(session_manager=self.cloud_manager)
+        self.scraper = JevWebScraper()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Dispatches an action in the browser lane."""
@@ -67,7 +73,63 @@ class BrowserLane:
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res
 
-        # 6. Default Observe
+        # 6. Jev Cloud Browser: Navigate
+        elif intent in ("cloud_navigate", "cloud_open"):
+            target_url = str(getattr(step, "value", "") or getattr(getattr(step, "target", None), "ref", "")) or "https://www.google.com"
+            res = self.jev_cloud.navigate(session_id="default", url=target_url)
+            res["lane"] = "browser"
+            res["changed"] = True
+            return res
+
+        # 7. Jev Cloud Browser: Click
+        elif intent in ("cloud_click", "jev_click"):
+            target_id = str(getattr(step, "value", "") or getattr(getattr(step, "target", None), "ref", "a_btn_1"))
+            res = self.jev_cloud.click_jev(session_id="default", action_id=target_id)
+            res["lane"] = "browser"
+            return res
+
+        # 8. Jev Cloud Browser: Type with Human Cadence
+        elif intent in ("cloud_type", "jev_type"):
+            target_id = getattr(getattr(step, "target", None), "ref", "a_input_1") or "a_input_1"
+            text_val = str(getattr(step, "value", ""))
+            res = self.jev_cloud.type_human(session_id="default", action_id=target_id, text=text_val)
+            res["lane"] = "browser"
+            return res
+
+        # 9. Jev Cloud Browser: Viewport Scroll
+        elif intent in ("cloud_scroll", "jev_scroll"):
+            amount = int(getattr(step, "value", 400) or 400)
+            res = self.jev_cloud.scroll_jev(session_id="default", amount=amount)
+            res["lane"] = "browser"
+            return res
+
+        # 10. Jev Cloud Browser: Autonomous Multi-Step Goal
+        elif intent in ("jev_goal", "cloud_auto", "auto_browser"):
+            goal_str = str(getattr(step, "value", "") or getattr(step, "description", ""))
+            res = self.jev_cloud.run_autonomous_goal(session_id="default", goal=goal_str)
+            res["lane"] = "browser"
+            res["status"] = "ok"
+            res["changed"] = True
+            return res
+
+        # 11. Jev Cloud Browser: Scrape Structured Data
+        elif intent in ("cloud_scrape", "scrape_page"):
+            raw_html = str(getattr(step, "value", ""))
+            meta = self.scraper.extract_metadata(raw_html)
+            tables = self.scraper.extract_tables(raw_html)
+            md = self.scraper.html_to_markdown(raw_html)
+            return {
+                "status": "ok",
+                "lane": "browser",
+                "mode": "jev_scraper",
+                "metadata": meta,
+                "tables": tables,
+                "markdown": md,
+                "changed": True,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # 12. Default Observe
         return {
             "status": "ok",
             "lane": "browser",

@@ -33,6 +33,7 @@ from .lanes.computer import ComputerLane
 from .lanes.browser import BrowserLane
 from .lanes.whatsapp import WhatsAppLane
 from .lanes.ios import IOSLane
+from .lanes.voice import VoiceLane
 from .server.api import run_server
 from .server.mcp import run_mcp_stdio
 from .config import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
@@ -46,6 +47,7 @@ def setup_executor() -> ThinkExecutor:
     ex.register_lane("browser", BrowserLane())
     ex.register_lane("whatsapp", WhatsAppLane())
     ex.register_lane("ios", IOSLane())
+    ex.register_lane("voice", VoiceLane())
     return ex
 
 def main(args: Optional[List[str]] = None):
@@ -149,6 +151,39 @@ def main(args: Optional[List[str]] = None):
     p_ios = subparsers.add_parser("ios", help="Control iPhone via Apple Shortcuts, URL schemes, and WDA")
     p_ios.add_argument("action", choices=["app", "speak", "notify", "shortcut", "tap", "home"], help="Action on iPhone")
     p_ios.add_argument("value", nargs="?", default="", help="App name, text to speak, notification text, or shortcut name")
+
+    # Command: cloud-browser
+    p_cb = subparsers.add_parser("cloud-browser", help="Jev Cloud Browser Controller")
+    p_cb.add_argument("action", choices=["navigate", "click", "type", "scroll", "auto", "scrape", "view", "state"], help="Browser action")
+    p_cb.add_argument("value", nargs="?", default="", help="URL, text to type, or autonomous goal")
+    p_cb.add_argument("--selector", default="", help="CSS selector or badge number")
+    p_cb.add_argument("--session", default=None, help="Target Cloud session ID")
+
+    # Command: deep-think
+    p_dt = subparsers.add_parser("deep-think", help="Long-CoT Deep Deliberation with explicit <think> buffer")
+    p_dt.add_argument("problem", help="Problem statement or query to deliberate")
+
+    # Command: symbolic
+    p_sym = subparsers.add_parser("symbolic", help="Formal symbolic verification (truth tables, equations, units)")
+    p_sym.add_argument("expression", help="Expression or formula to evaluate/solve")
+    p_sym.add_argument("--action", choices=["sat", "quadratic", "linear", "convert", "interval"], default="sat")
+    p_sym.add_argument("--from-unit", dest="from_unit", default="km", help="Unit to convert from")
+    p_sym.add_argument("--to-unit", dest="to_unit", default="m", help="Unit to convert to")
+
+    # Command: voice
+    p_voice = subparsers.add_parser("voice", help="Speech synthesis and voice recognition lane")
+    p_voice.add_argument("action", choices=["speak", "ssml", "transcribe"], help="Voice action")
+    p_voice.add_argument("value", help="Text to speak or audio path")
+
+    # Command: kg
+    p_kg = subparsers.add_parser("kg", help="Cognitive Knowledge Graph (GraphRAG)")
+    p_kg.add_argument("action", choices=["query", "mermaid", "stats"], help="Action on knowledge graph")
+    p_kg.add_argument("entity", nargs="?", default="", help="Entity to query")
+
+    # Command: thought-map
+    p_tmap = subparsers.add_parser("thought-map", help="Cognitive Thought Map & Mental Models")
+    p_tmap.add_argument("goal", help="Root goal or query to construct thought map for")
+    p_tmap.add_argument("--format", choices=["ascii", "mermaid", "html", "json"], default="ascii", help="Output visualization format")
 
     # Command: status
     subparsers.add_parser("status", help="Inspect platform health, lanes, and recent traces")
@@ -442,9 +477,148 @@ def main(args: Optional[List[str]] = None):
         print("=" * 60)
         print(json.dumps(res, ensure_ascii=False, indent=2))
 
+    elif parsed.command == "cloud-browser":
+        b_lane: BrowserLane = executor._lane_handlers["browser"]
+        from .core.planner import Step
+        action_intent_map = {
+            "navigate": "cloud_navigate",
+            "click": "cloud_click",
+            "type": "cloud_type",
+            "scroll": "cloud_scroll",
+            "auto": "jev_goal",
+            "scrape": "cloud_scrape",
+            "state": "cloud_state",
+            "view": "cloud_view",
+        }
+        intent = action_intent_map.get(parsed.action, "cloud_navigate")
+        step_args = {
+            "url": parsed.value if parsed.action == "navigate" else None,
+            "selector": parsed.selector or (parsed.value if parsed.action == "click" else None),
+            "text": parsed.value if parsed.action == "type" else None,
+            "goal": parsed.value if parsed.action == "auto" else None,
+            "session_id": parsed.session,
+        }
+        res = asyncio.run(b_lane.dispatch_step(Step(step_id=1, lane="browser", intent=intent, value=parsed.value, args=step_args)))
+        print("=" * 60)
+        print(f"☁️ Jev Cloud Browser Action: [{parsed.action.upper()}]")
+        print("=" * 60)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "deep-think":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        delib = r_lane.deep_think.deliberate(parsed.problem)
+        print("=" * 60)
+        print(f"🧠 Long-CoT Deep Thinking Deliberation")
+        print("=" * 60)
+        print(f"Deliberation Time: {delib.deliberation_time_ms} ms | Self-Corrections: {delib.self_correction_count} | Confidence: {delib.confidence_score}")
+        print("\n" + "=" * 30 + " <think> " + "=" * 30)
+        print(delib.think_trace)
+        print("=" * 30 + " </think> " + "=" * 29)
+        print(f"\n💡 Final Solution:\n{delib.final_solution}")
+
+    elif parsed.command == "symbolic":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        print("=" * 60)
+        print(f"🔬 Formal Symbolic Verifier: [{parsed.action.upper()}]")
+        print("=" * 60)
+        if parsed.action == "sat":
+            res = r_lane.symbolic.verify_proposition(parsed.expression)
+            print(f"Formula: {res.formula}")
+            print(f"Satisfiable: {'✅ YES' if res.satisfiable else '❌ NO'} | Tautology: {'✅ YES' if res.tautology else '❌ NO'}")
+            print(f"Variables: {res.variables}")
+            print(f"Satisfying Assignments: {len(res.satisfying_assignments)}")
+        elif parsed.action == "quadratic":
+            import re
+            nums = [float(x) for x in re.findall(r"[-+]?\d*\.?\d+", parsed.expression)]
+            if len(nums) >= 3:
+                a, b, c = nums[0], nums[1], nums[2]
+                sol = r_lane.symbolic.solve_quadratic(a, b, c)
+                print(f"Equation: {a}x² + {b}x + {c} = 0")
+                print(f"Discriminant: {sol.discriminant} | Roots: {sol.roots} | Type: {sol.nature}")
+            else:
+                print("Error: Please provide 3 coefficients: 'a b c' or 'ax^2 + bx + c = 0'")
+        elif parsed.action == "linear":
+            import re
+            nums = [float(x) for x in re.findall(r"[-+]?\d*\.?\d+", parsed.expression)]
+            if len(nums) >= 2:
+                a, b = nums[0], nums[1]
+                sol = r_lane.symbolic.solve_linear(a, b)
+                print(f"Equation: {a}x + {b} = 0 -> Solution: {sol}")
+            else:
+                print("Error: Please provide 2 coefficients: 'a b'")
+        elif parsed.action == "convert":
+            import re
+            nums = [float(x) for x in re.findall(r"[-+]?\d*\.?\d+", parsed.expression)]
+            val = nums[0] if nums else 1.0
+            conv = r_lane.symbolic.convert_units(val, parsed.from_unit, parsed.to_unit)
+            print(f"Converted: {val} {parsed.from_unit} = {conv} {parsed.to_unit}")
+        elif parsed.action == "interval":
+            print(f"Interval analysis for: {parsed.expression}")
+
+    elif parsed.command == "voice":
+        v_lane: VoiceLane = executor._lane_handlers["voice"]
+        from .core.planner import Step
+        intent_map = {"speak": "speak", "ssml": "to_ssml", "transcribe": "transcribe"}
+        res = asyncio.run(v_lane.dispatch_step(Step(step_id=1, lane="voice", intent=intent_map[parsed.action], value=parsed.value)))
+        print("=" * 60)
+        print(f"🎙️ Voice Lane Result: [{parsed.action.upper()}]")
+        print("=" * 60)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "kg":
+        from .core.knowledge_graph import CognitiveKnowledgeGraph
+        kg = CognitiveKnowledgeGraph()
+        kg.add_triple("kosif_think", "implements", "Long-CoT Deep Thinking")
+        kg.add_triple("kosif_think", "implements", "Jev Cloud Browser")
+        kg.add_triple("kosif_think", "implements", "Symbolic Verifier")
+        kg.add_triple("kosif_think", "implements", "Voice Lane")
+        kg.add_triple("Jev Cloud Browser", "provides", "Virtual Canvas Streaming")
+        kg.add_triple("Jev Cloud Browser", "provides", "Stealth Anti-Bot Evasion")
+        kg.add_triple("Deep Thinking", "features", "Deliberation <think> Buffer")
+        kg.add_triple("Deep Thinking", "features", "Backtracking & Hypothesis Branching")
+        print("=" * 60)
+        print(f"🌐 Cognitive Knowledge Graph (GraphRAG): [{parsed.action.upper()}]")
+        print("=" * 60)
+        if parsed.action == "mermaid":
+            print(kg.to_mermaid())
+        elif parsed.action == "stats":
+            print(f"Total Triples: {len(kg.triples)}")
+            print(f"Total Entities: {len(kg.entities)}")
+            for ent in sorted(kg.entities):
+                print(f"  • {ent}")
+        elif parsed.action == "query":
+            target = parsed.entity or "kosif_think"
+            subgraph = kg.get_ego_graph(target, hops=2)
+            print(f"Ego-Graph for '{target}' ({len(subgraph)} triples):")
+            for t in subgraph:
+                print(f"  • {t['subject']} --[{t['predicate']}]--> {t['object']}")
+
+    elif parsed.command == "thought-map":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="thought_map", value=parsed.goal)))
+        print("=" * 60)
+        print(f"🧠 Cognitive Thought Map: '{parsed.goal}'")
+        print("=" * 60)
+        if parsed.format == "mermaid":
+            print(res["mermaid"])
+        elif parsed.format == "html":
+            print(f"Generated Interactive HTML5 Canvas widget ({len(res['interactive_html'])} bytes)")
+            out_file = "thought_map.html"
+            with open(out_file, "w", encoding="utf-8") as f:
+                f.write(res["interactive_html"])
+            print(f"Saved interactive map to: {out_file}")
+        elif parsed.format == "json":
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+        else:
+            print(res["ascii_tree"])
+            print(f"\nCritical Reasoning Path ({len(res['critical_path'])} hops):")
+            for step in res["critical_path"]:
+                print(f"  ➜ [{step['category'].upper()}] {step['label']} ({int(step['belief']*100)}% belief)")
+
     elif parsed.command == "status":
         print("=" * 60)
-        print("🌐 KOSIF Think Platform Health (7 Autonomous Lanes)")
+        print("🌐 KOSIF Think Platform Health (8 Autonomous Lanes)")
         print("=" * 60)
         for lane, metrics in executor.router._lane_health.items():
             st = "🟢 Active" if metrics.get("available") and not metrics.get("circuit_open") else "🔴 Degraded"

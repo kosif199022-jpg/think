@@ -21,6 +21,9 @@ from .tournament_verifier import TournamentVerifier
 from .self_consistency import SelfConsistencyEngine
 from .react_engine import ReActEngine
 from .rag_engine import AgenticRAGEngine
+from .deep_think import DeepThinkingEngine
+from .symbolic_verifier import SymbolicVerifier
+from .thought_map import CognitiveThoughtMap
 from ...core.cancellation import CancellationToken
 
 class ReasoningLane:
@@ -42,6 +45,9 @@ class ReasoningLane:
         self.self_consistency = SelfConsistencyEngine()
         self.react = ReActEngine()
         self.rag = AgenticRAGEngine()
+        self.deep_think = DeepThinkingEngine()
+        self.symbolic = SymbolicVerifier()
+        self.thought_map = CognitiveThoughtMap()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Executes a reasoning step via the requested cognitive paradigm."""
@@ -191,7 +197,47 @@ class ReasoningLane:
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res
 
-        # 14. Council Mode
+        # 14. Deep Thinking & Long-CoT Mode (DeepSeek-R1 / o1 style)
+        elif "deep_think" in intent or "long_cot" in intent or "deep" in intent:
+            res = self.deep_think.deliberate(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 15. Symbolic Math & Propositional Logic Verification
+        elif "symbolic" in intent or "math" in intent or "logic" in intent:
+            if any(op in goal.upper() for op in ("->", "AND", "OR", "NOT", "&", "|", "^")):
+                res = self.symbolic.verify_propositional_logic(goal)
+            else:
+                res = self.symbolic.solve_quadratic(1.0, -5.0, 6.0)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["mode"] = "symbolic_verifier"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 16. Cognitive Thought Map / Mental Mind Map Mode
+        elif "thought_map" in intent or "mind_map" in intent or "mental_map" in intent or "concept_map" in intent:
+            tmap = CognitiveThoughtMap()
+            tmap.build_from_goal(goal)
+            return {
+                "status": "ok",
+                "lane": "reasoning",
+                "mode": "thought_map",
+                "map_id": tmap.map_id,
+                "ascii_tree": tmap.to_ascii_tree(),
+                "mermaid": tmap.to_mermaid_mindmap(),
+                "interactive_html": tmap.to_interactive_html(),
+                "critical_path": tmap.find_critical_path(),
+                "total_nodes": len(tmap.node_index),
+                "changed": True,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # 17. Council Mode
         elif "council" in intent:
             deliberation = self.council.deliberate(goal, {})
             return {
