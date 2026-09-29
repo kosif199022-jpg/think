@@ -16,7 +16,9 @@ class TestCoveCoalaTournament(unittest.TestCase):
         cove = ChainOfVerification()
         res = cove.verify_and_synthesize("Transfer funds securely and verify confirmation")
         self.assertEqual(res["mode"], "chain_of_verification")
-        self.assertTrue(res["all_verified"])
+        # No model configured: the checklist is returned but nothing is claimed as verified.
+        self.assertTrue(res["simulated"])
+        self.assertFalse(res["all_verified"])
         self.assertGreaterEqual(res["verification_questions_count"], 4)
         self.assertIn("verified_response", res)
         self.assertIn("Safety Gate", [v["question"] for v in res["verifications"]][3])

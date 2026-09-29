@@ -25,6 +25,9 @@ full = [
     "uvicorn>=0.22.0",
     "playwright>=1.40.0"
 ]
+claude = [
+    "anthropic>=0.40"
+]
 dev = [
     "pytest>=7.0.0"
 ]

@@ -23,6 +23,7 @@ from .symbolic_verifier import SymbolicVerifier
 from .thought_map import CognitiveThoughtMap, ThoughtMapNode, ThoughtNodeCategory
 from .code_agent import CodeAgentInterpreter
 from .rlvr_reasoner import RLVRReasoner
+from . import strategies
 
 __all__ = [
     "ReasoningLane",
@@ -55,4 +56,5 @@ __all__ = [
     "ThoughtNodeCategory",
     "CodeAgentInterpreter",
     "RLVRReasoner",
+    "strategies",
 ]

@@ -3,12 +3,18 @@ Multi-Provider LLM Router & Budget Limiter for KOSIF Think.
 Inspired by LiteLLM, OpenRouter, and Ollama.
 Manages automatic failover across OpenAI, Anthropic, Gemini, and Local Ollama,
 tracks cumulative token usage and USD costs, and enforces session budget limits.
-Zero external dependencies. Pure Python.
+
+Providers with a ``ModelClient`` attached (see ``connectors/models.py``) are really called and their reported
+token usage is billed. When no client is attached to any provider the router answers with a placeholder and
+marks the record ``simulated: True`` so nothing downstream mistakes it for model output.
 """
 
 from typing import Dict, Any, List, Optional
+import copy
 import time
 import os
+
+from .models import ModelClient, ModelError
 
 class BudgetExceededException(Exception):
     """Raised when cumulative session cost exceeds configured hard limit."""
@@ -36,12 +42,14 @@ class LLMRouter:
     # Standard pricing approximations per 1k tokens
     CATALOG = {
         "openai": ModelProvider("openai", "gpt-4o", cost_per_1k_input=0.005, cost_per_1k_output=0.015),
-        "anthropic": ModelProvider("anthropic", "claude-3-5-sonnet", cost_per_1k_input=0.003, cost_per_1k_output=0.015),
+        "anthropic": ModelProvider("anthropic", "claude-opus-5", cost_per_1k_input=0.005, cost_per_1k_output=0.025),
         "gemini": ModelProvider("gemini", "gemini-2.5-flash", cost_per_1k_input=0.0001, cost_per_1k_output=0.0004),
         "deepseek": ModelProvider("deepseek", "deepseek-r1", cost_per_1k_input=0.0005, cost_per_1k_output=0.002),
         "qwen": ModelProvider("qwen", "qwen-2.5-coder-32b", cost_per_1k_input=0.0002, cost_per_1k_output=0.0005),
         "llama": ModelProvider("llama", "llama-3.3-70b", cost_per_1k_input=0.0004, cost_per_1k_output=0.0008),
-        "ollama": ModelProvider("ollama", "llama3:8b", cost_per_1k_input=0.0, cost_per_1k_output=0.0)  # Free local
+        "ollama": ModelProvider("ollama", "llama3:8b", cost_per_1k_input=0.0, cost_per_1k_output=0.0),  # Free local
+        "openai_compatible": ModelProvider("openai_compatible", "local", cost_per_1k_input=0.0, cost_per_1k_output=0.0),
+        "scripted": ModelProvider("scripted", "scripted", cost_per_1k_input=0.0, cost_per_1k_output=0.0),
     }
 
     def __init__(
@@ -49,15 +57,37 @@ class LLMRouter:
         max_budget_usd: float = 10.0,
         primary_provider: str = "openai",
         max_session_budget_usd: Optional[float] = None,
+        clients: Optional[Dict[str, ModelClient]] = None,
         **kwargs
     ):
+        # Health flags are per router, not shared through the class attribute.
+        self.CATALOG = copy.deepcopy(type(self).CATALOG)
+        self.clients: Dict[str, ModelClient] = {}
         self.max_budget_usd = max_session_budget_usd if max_session_budget_usd is not None else max_budget_usd
         self.primary_provider = primary_provider
-        self.failover_order = [primary_provider, "deepseek", "qwen", "gemini", "anthropic", "ollama"]
+        self.failover_order = [primary_provider] + [p for p in
+                               ("deepseek", "qwen", "gemini", "anthropic", "ollama", "openai_compatible", "scripted")
+                               if p != primary_provider]
         self.cumulative_prompt_tokens = 0
         self.cumulative_completion_tokens = 0
         self.cumulative_cost_usd = 0.0
         self.request_history: List[Dict[str, Any]] = []
+        for prov_id, client in (clients or {}).items():
+            self.attach_client(client, prov_id)
+
+    def attach_client(self, client: ModelClient, provider_id: Optional[str] = None) -> None:
+        """Routes ``provider_id`` (default: the client's own provider) to a real model client."""
+        prov_id = provider_id or client.provider
+        if prov_id not in self.CATALOG:
+            self.CATALOG[prov_id] = ModelProvider(prov_id, client.model, 0.0, 0.0)
+        self.clients[prov_id] = client
+        if prov_id not in self.failover_order:
+            self.failover_order.append(prov_id)
+
+    @property
+    def is_simulated(self) -> bool:
+        """True when no provider has a real client, so completions are placeholders."""
+        return not self.clients
 
     @property
     def total_cost_usd(self) -> float:
@@ -103,57 +133,81 @@ class LLMRouter:
         self,
         prompt: str,
         system_instruction: Optional[str] = None,
-        model_override: Optional[str] = None
+        model_override: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Dispatches completion through healthy providers in cascade order."""
+        """Dispatches a completion through healthy providers in cascade order.
+
+        With clients attached only those providers are tried, and the returned usage is what the provider
+        reported. With none attached the reply is a placeholder flagged ``simulated: True``.
+        """
         t0 = time.perf_counter()
-        prompt_tokens = self.estimate_tokens(prompt) + self.estimate_tokens(system_instruction or "")
+        simulated = self.is_simulated
+        est_prompt_tokens = self.estimate_tokens(prompt) + self.estimate_tokens(system_instruction or "")
 
         last_error = None
         for prov_id in self.failover_order:
             provider = self.CATALOG.get(prov_id)
             if not provider or not provider.is_healthy:
                 continue
+            client = self.clients.get(prov_id)
+            if not simulated and client is None:
+                continue
+
+            # Pre-budget check on the estimate
+            est_cost = provider.compute_cost(est_prompt_tokens, min(max_tokens, 1024) if client else 150)
+            if self.cumulative_cost_usd + est_cost > self.max_budget_usd:
+                raise BudgetExceededException(
+                    f"Cumulative cost (${self.cumulative_cost_usd:.4f}) exceeds hard limit (${self.max_budget_usd:.2f})"
+                )
 
             try:
-                # Pre-budget check
-                est_cost = provider.compute_cost(prompt_tokens, 150)
-                if self.cumulative_cost_usd + est_cost > self.max_budget_usd:
-                    raise BudgetExceededException(
-                        f"Cumulative cost (${self.cumulative_cost_usd:.4f}) exceeds hard limit (${self.max_budget_usd:.2f})"
-                    )
-
-                # Simulated high-intelligence response synthesis (or provider API call)
-                target_model = model_override or provider.default_model
-                response_text = f"[{provider.provider_id.upper()}:{target_model}] Synthesized reasoning for: '{prompt[:60]}...'"
-                completion_tokens = self.estimate_tokens(response_text)
-
-                actual_cost = provider.compute_cost(prompt_tokens, completion_tokens)
-                self.cumulative_prompt_tokens += prompt_tokens
-                self.cumulative_completion_tokens += completion_tokens
-                self.cumulative_cost_usd = round(self.cumulative_cost_usd + actual_cost, 6)
-
-                rec = {
-                    "provider": provider.provider_id,
-                    "model": target_model,
-                    "response": response_text,
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": prompt_tokens + completion_tokens,
-                    "cost_usd": actual_cost,
-                    "cumulative_cost_usd": self.cumulative_cost_usd,
-                    "budget_remaining_usd": round(self.max_budget_usd - self.cumulative_cost_usd, 4),
-                    "duration_ms": round((time.perf_counter() - t0) * 1000, 2)
-                }
-                self.request_history.append(rec)
-                return rec
-
-            except BudgetExceededException:
-                raise
-            except Exception as ex:
+                if client is not None:
+                    if model_override:
+                        client.model = model_override
+                    completion = client.complete(prompt, system=system_instruction, max_tokens=max_tokens,
+                                                 temperature=temperature)
+                    target_model = completion.model
+                    response_text = completion.text
+                    prompt_tokens = completion.input_tokens or est_prompt_tokens
+                    completion_tokens = completion.output_tokens or self.estimate_tokens(response_text)
+                    stop_reason = completion.stop_reason
+                else:
+                    target_model = model_override or provider.default_model
+                    response_text = (f"[SIMULATED {provider.provider_id.upper()}:{target_model}] No model client is "
+                                     f"configured; placeholder for: '{prompt[:60]}...'")
+                    prompt_tokens = est_prompt_tokens
+                    completion_tokens = self.estimate_tokens(response_text)
+                    stop_reason = None
+            except ModelError as ex:
                 provider.consecutive_failures += 1
                 if provider.consecutive_failures >= 3:
                     provider.is_healthy = False
-                last_error = str(ex)
+                last_error = f"{prov_id}: {ex}"
+                continue
+
+            provider.consecutive_failures = 0
+            actual_cost = provider.compute_cost(prompt_tokens, completion_tokens)
+            self.cumulative_prompt_tokens += prompt_tokens
+            self.cumulative_completion_tokens += completion_tokens
+            self.cumulative_cost_usd = round(self.cumulative_cost_usd + actual_cost, 6)
+
+            rec = {
+                "provider": provider.provider_id,
+                "model": target_model,
+                "response": response_text,
+                "simulated": client is None,
+                "stop_reason": stop_reason,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+                "cost_usd": actual_cost,
+                "cumulative_cost_usd": self.cumulative_cost_usd,
+                "budget_remaining_usd": round(self.max_budget_usd - self.cumulative_cost_usd, 4),
+                "duration_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+            self.request_history.append(rec)
+            return rec
 
         raise RuntimeError(f"All LLM providers in cascade failed. Last error: {last_error}")
