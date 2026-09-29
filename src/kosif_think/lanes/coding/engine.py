@@ -10,6 +10,8 @@ from .patcher import AtomicPatcher
 from .sandbox import TestSandbox
 from .repo_mapper import RepoMapper
 from .debugger import AutonomousDebugger
+from .repo_search import RepoSearchEngine
+from .tdd_synthesizer import TDDSynthesizer
 from ...core.cancellation import CancellationToken
 
 class CodingLane:
@@ -21,6 +23,8 @@ class CodingLane:
         self.sandbox = TestSandbox()
         self.mapper = RepoMapper()
         self.debugger = AutonomousDebugger()
+        self.search = RepoSearchEngine()
+        self.tdd = TDDSynthesizer()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Dispatches an action in the coding lane."""
@@ -80,6 +84,49 @@ class CodingLane:
             cmd = str(getattr(step, "value", "") or "python -m unittest discover tests")
             res = self.debugger.run_debug_cycle(cmd)
             res["lane"] = "coding"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 6. High-Speed Workspace Regex Search
+        elif intent in ("search", "grep", "find_in_files"):
+            pattern = str(getattr(step, "value", "") or "")
+            res = self.search.search_content(root_dir=".", pattern=pattern)
+            res["lane"] = "coding"
+            res["status"] = "ok"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 7. Symbol Definition Lookup
+        elif intent in ("symbols", "find_symbols", "lookup_def"):
+            sym = str(getattr(step, "value", "") or "")
+            res = self.search.find_symbols(root_dir=".", symbol_query=sym)
+            res["lane"] = "coding"
+            res["status"] = "ok"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 8. Workspace Directory Tree
+        elif intent in ("tree", "dir_tree", "repo_tree"):
+            target_dir = str(getattr(step, "value", "") or ".")
+            tree_str = self.search.tree(root_dir=target_dir)
+            return {
+                "status": "ok",
+                "lane": "coding",
+                "mode": "workspace_tree",
+                "tree": tree_str,
+                "changed": True,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # 9. Test-Driven Development (TDD) Loop
+        elif intent in ("tdd", "tdd_synthesize", "test_driven"):
+            req = str(getattr(step, "value", "") or getattr(step, "description", ""))
+            res = self.tdd.run_tdd_loop(requirement=req)
+            res["lane"] = "coding"
+            res["status"] = "ok" if res["success"] else "tdd_failed"
             res["changed"] = True
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res

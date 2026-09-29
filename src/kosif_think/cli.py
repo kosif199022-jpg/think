@@ -115,10 +115,30 @@ def main(args: Optional[List[str]] = None):
     p_tour = subparsers.add_parser("tournament", help="Run LLM-as-a-Verifier pairwise tournament elimination")
     p_tour.add_argument("problem", type=str, help="Problem or objective to select best strategy for")
 
+    # Command: consistency (Self-Consistency & Majority Voting)
+    p_cons = subparsers.add_parser("consistency", help="Run Self-Consistency & Majority Voting reasoning")
+    p_cons.add_argument("problem", type=str, help="Problem to evaluate across diverse cognitive perspectives")
+
+    # Command: react (Thought-Action-Observation)
+    p_react = subparsers.add_parser("react", help="Run autonomous ReAct Thought-Action-Observation loop")
+    p_react.add_argument("goal", type=str, help="Goal to resolve via iterative tool actions")
+
+    # Command: rag (Agentic RAG & BM25 Search)
+    p_rag = subparsers.add_parser("rag", help="Search platform manuals and knowledge via Okapi BM25 and HyDE")
+    p_rag.add_argument("query", type=str, help="Query or question to search")
+
+    # Command: ground (GUI Element Localization)
+    p_ground = subparsers.add_parser("ground", help="Ground natural language onto GUI coordinates")
+    p_ground.add_argument("instruction", type=str, help="UI instruction (e.g., 'click submit button')")
+
+    # Command: guard (AI Safety Guardrails)
+    p_guard = subparsers.add_parser("guard", help="Scan text for prompt injections and redact PII credentials")
+    p_guard.add_argument("text", type=str, help="Prompt or text to scan")
+
     # Command: code
-    p_code = subparsers.add_parser("code", help="Code intelligence, AST parsing, testing, and debugging")
-    p_code.add_argument("action", choices=["analyze", "map", "test", "debug"], help="Coding action")
-    p_code.add_argument("target", nargs="?", default=".", help="File path, directory, or test command")
+    p_code = subparsers.add_parser("code", help="Code intelligence, AST parsing, grep, tree, TDD, testing, and debugging")
+    p_code.add_argument("action", choices=["analyze", "map", "test", "debug", "search", "symbols", "tree", "tdd"], help="Coding action")
+    p_code.add_argument("target", nargs="?", default=".", help="File path, directory, regex pattern, or spec")
 
     # Command: graphic
     p_graph = subparsers.add_parser("graphic", help="Synthesize diagrams, SVGs, or Canvas UI")
@@ -300,15 +320,96 @@ def main(args: Optional[List[str]] = None):
         for m in res.get("matches", []):
             print(f"  • [{m['round']}] {m['match']} -> Winner: {m['winner']}")
 
+    elif parsed.command == "consistency":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="self_consistency", value=parsed.problem)))
+        print("=" * 60)
+        print("🗳️ Self-Consistency & Majority Voting Reasoning")
+        print("=" * 60)
+        print(f"Majority Conclusion: {res.get('majority_conclusion')}")
+        print(f"Consensus Ratio: {int(res.get('consensus_ratio', 0) * 100)}% | Entropy: {res.get('entropy')}")
+        print(f"Vote Distribution: {res.get('vote_distribution')}")
+        print("\nReasoning Rollouts:")
+        for r in res.get("rollouts", []):
+            print(f"  • [{r['perspective']}] -> {r['conclusion']} (Conf: {r['confidence']})")
+
+    elif parsed.command == "react":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="react", value=parsed.goal)))
+        print("=" * 60)
+        print("🔄 ReAct (Thought-Action-Observation) Trajectory")
+        print("=" * 60)
+        for s in res.get("trajectory", []):
+            print(f"Step {s['step']}:")
+            print(f"  🧠 Thought: {s['thought']}")
+            if s.get("action"):
+                print(f"  ⚡ Action: {s['action']}")
+                print(f"  👁️ Obs:    {s['observation']}")
+        print(f"\n{res.get('final_answer')}")
+
+    elif parsed.command == "rag":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="rag", value=parsed.query)))
+        print("=" * 60)
+        print(f"📚 Agentic RAG & Okapi BM25 Search: '{parsed.query}'")
+        print("=" * 60)
+        print(f"Matches Found: {res.get('matches_count')} (Top-K: {res.get('top_k')})")
+        for m in res.get("results", []):
+            print(f"  • [{m['score']}] {m['title']}: {m['snippet']}")
+
+    elif parsed.command == "ground":
+        c_lane: ComputerLane = executor._lane_handlers["computer"]
+        from .core.planner import Step
+        res = asyncio.run(c_lane.dispatch_step(Step(step_id=1, lane="computer", intent="ground", value=parsed.instruction)))
+        print("=" * 60)
+        print(f"🎯 Multimodal GUI Element Grounding: '{parsed.instruction}'")
+        print("=" * 60)
+        if res.get("status") == "grounded":
+            coords = res.get("target_coordinates", {})
+            elem = res.get("element", {})
+            print(f"Action: {res.get('action').upper()} at ({coords.get('x')}, {coords.get('y')})")
+            print(f"Confidence: {int(res.get('confidence', 0) * 100)}%")
+            print(f"Target Element: [{elem.get('role')}] '{elem.get('text')}' (ID: {elem.get('element_id')})")
+        else:
+            print("Status: Element not found or below confidence threshold.")
+
+    elif parsed.command == "guard":
+        from .core.guardrails import GuardrailsSystem
+        guard = GuardrailsSystem()
+        scan = guard.scan_prompt(parsed.text)
+        cleaned, pii_count = guard.redact_pii(parsed.text)
+        print("=" * 60)
+        print("🛡️ AI Safety Guardrails & PII Inspection")
+        print("=" * 60)
+        print(f"Safe: {scan.get('is_safe')} | Risk Level: {scan.get('risk_level').upper()}")
+        print(f"Detected Injections: {scan.get('detected_patterns')}")
+        print(f"PII Redactions: {pii_count}")
+        print(f"\nGuarded Output:\n{cleaned}")
+
     elif parsed.command == "code":
         c_lane: CodingLane = executor._lane_handlers["coding"]
         from .core.planner import Step
-        intent_map = {"analyze": "analyze", "map": "repo_map", "test": "test", "debug": "debug"}
+        intent_map = {
+            "analyze": "analyze",
+            "map": "repo_map",
+            "test": "test",
+            "debug": "debug",
+            "search": "search",
+            "symbols": "symbols",
+            "tree": "tree",
+            "tdd": "tdd"
+        }
         res = asyncio.run(c_lane.dispatch_step(Step(step_id=1, lane="coding", intent=intent_map[parsed.action], value=parsed.target)))
         print("=" * 60)
         print(f"💻 Coding Lane Result: [{parsed.action.upper()}]")
         print("=" * 60)
-        print(json.dumps(res, ensure_ascii=False, indent=2))
+        if parsed.action == "tree" and "tree" in res:
+            print(res["tree"])
+        else:
+            print(json.dumps(res, ensure_ascii=False, indent=2))
 
     elif parsed.command == "graphic":
         g_lane: GraphicsLane = executor._lane_handlers["graphics"]

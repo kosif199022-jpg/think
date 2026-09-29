@@ -57,12 +57,12 @@ TOOLS_DEFINITION = [
     },
     {
         "name": "think_code_action",
-        "description": "Runs AST parsing, codebase mapping, test running, or debugging.",
+        "description": "Runs AST parsing, codebase mapping, test running, debugging, regex search, symbols lookup, directory tree, or TDD loop.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "action": {"type": "string", "enum": ["analyze", "repo_map", "test", "debug"]},
-                "target": {"type": "string", "description": "File path, directory, or test command."}
+                "action": {"type": "string", "enum": ["analyze", "repo_map", "test", "debug", "search", "symbols", "tree", "tdd"]},
+                "target": {"type": "string", "description": "File path, directory, regex pattern, or spec."}
             },
             "required": ["action"]
         }
@@ -77,6 +77,61 @@ TOOLS_DEFINITION = [
                 "title": {"type": "string", "description": "Title or description for the visual asset."}
             },
             "required": ["format"]
+        }
+    },
+    {
+        "name": "think_self_consistency",
+        "description": "Samples multiple diverse reasoning trajectories and votes on majority consensus.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "problem": {"type": "string", "description": "The complex problem to evaluate."}
+            },
+            "required": ["problem"]
+        }
+    },
+    {
+        "name": "think_react",
+        "description": "Executes iterative Thought-Action-Observation loop with tool execution.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal": {"type": "string", "description": "The goal or task to resolve."}
+            },
+            "required": ["goal"]
+        }
+    },
+    {
+        "name": "think_rag_search",
+        "description": "Sub-millisecond document ranking and knowledge retrieval using Okapi BM25 and HyDE.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "The query to search knowledge manuals for."}
+            },
+            "required": ["query"]
+        }
+    },
+    {
+        "name": "think_gui_ground",
+        "description": "Maps natural language UI instructions onto screen coordinates (x, y) and interactive elements.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "instruction": {"type": "string", "description": "Natural language command, e.g. 'click Save'."}
+            },
+            "required": ["instruction"]
+        }
+    },
+    {
+        "name": "think_guardrails_scan",
+        "description": "Scans text for prompt injection exploits and redacts sensitive PII and API credentials.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "The prompt or output to inspect and clean."}
+            },
+            "required": ["text"]
         }
     }
 ]
@@ -134,6 +189,41 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> Dict[str, An
             from ..core.planner import Step
             return await handler.dispatch_step(Step(step_id=1, lane="graphics", intent=fmt, description=title))
         return {"error": "Graphics lane not available"}
+    elif name == "think_self_consistency":
+        prob = arguments.get("problem", "")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="self_consistency", value=prob))
+        return {"error": "Reasoning lane not available"}
+    elif name == "think_react":
+        goal = arguments.get("goal", "")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="react", value=goal))
+        return {"error": "Reasoning lane not available"}
+    elif name == "think_rag_search":
+        query = arguments.get("query", "")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="rag", value=query))
+        return {"error": "Reasoning lane not available"}
+    elif name == "think_gui_ground":
+        instruction = arguments.get("instruction", "")
+        handler = executor._lane_handlers.get("computer")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="computer", intent="ground", value=instruction))
+        return {"error": "Computer lane not available"}
+    elif name == "think_guardrails_scan":
+        text = arguments.get("text", "")
+        from ..core.guardrails import GuardrailsSystem
+        guard = GuardrailsSystem()
+        scan = guard.scan_prompt(text)
+        cleaned, pii_count = guard.redact_pii(text)
+        return {"scan": scan, "redacted_pii_count": pii_count, "cleaned_text": cleaned}
     return {"error": f"Unknown tool: {name}"}
 
 async def run_mcp_stdio():

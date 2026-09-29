@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 import uuid
 from .cancellation import CancellationToken
 from .audit import sanitize_secrets
+from .guardrails import GuardrailsSystem
 
 @dataclass
 class SanitizedRequest:
@@ -17,13 +18,14 @@ class SanitizedRequest:
     context: Dict[str, Any] = field(default_factory=dict)
     is_valid: bool = True
     error_message: Optional[str] = None
+    guardrails_scan: Optional[Dict[str, Any]] = None
 
 
 class PreflightGate:
     """Performs pre-execution analysis and sanitization on raw incoming goals."""
 
-    def __init__(self):
-        pass
+    def __init__(self, guardrails: Optional[GuardrailsSystem] = None):
+        self.guardrails = guardrails or GuardrailsSystem()
 
     def run_preflight(
         self,
@@ -51,6 +53,8 @@ class PreflightGate:
             )
 
         clean_text = raw_prompt.strip()
+        scan_res = self.guardrails.scan_prompt(clean_text)
+        clean_text, _ = self.guardrails.redact_pii(clean_text)
         sanitized_ctx = sanitize_secrets(context or {})
         task_id = str(uuid.uuid4())[:8]
 
@@ -59,5 +63,6 @@ class PreflightGate:
             raw_prompt=raw_prompt,
             clean_goal=clean_text,
             context=sanitized_ctx,
-            is_valid=True
+            is_valid=True,
+            guardrails_scan=scan_res
         )

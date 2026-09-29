@@ -15,6 +15,9 @@ from .repo_intelligence import RepoIntelligence
 from .cove import ChainOfVerification
 from .coala_memory import CoALAMemorySystem
 from .tournament_verifier import TournamentVerifier, CandidateSolution
+from .self_consistency import SelfConsistencyEngine, ReasoningPath
+from .react_engine import ReActEngine, ReActStep
+from .rag_engine import AgenticRAGEngine, BM25Index, Document
 
 __all__ = [
     "ReasoningLane",
@@ -32,4 +35,11 @@ __all__ = [
     "CoALAMemorySystem",
     "TournamentVerifier",
     "CandidateSolution",
+    "SelfConsistencyEngine",
+    "ReasoningPath",
+    "ReActEngine",
+    "ReActStep",
+    "AgenticRAGEngine",
+    "BM25Index",
+    "Document",
 ]

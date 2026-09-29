@@ -18,6 +18,9 @@ from .repo_intelligence import RepoIntelligence
 from .cove import ChainOfVerification
 from .coala_memory import CoALAMemorySystem
 from .tournament_verifier import TournamentVerifier
+from .self_consistency import SelfConsistencyEngine
+from .react_engine import ReActEngine
+from .rag_engine import AgenticRAGEngine
 from ...core.cancellation import CancellationToken
 
 class ReasoningLane:
@@ -36,6 +39,9 @@ class ReasoningLane:
         self.cove = ChainOfVerification()
         self.coala = CoALAMemorySystem()
         self.tournament = TournamentVerifier()
+        self.self_consistency = SelfConsistencyEngine()
+        self.react = ReActEngine()
+        self.rag = AgenticRAGEngine()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Executes a reasoning step via the requested cognitive paradigm."""
@@ -158,7 +164,34 @@ class ReasoningLane:
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res
 
-        # 11. Council Mode
+        # 11. Self-Consistency & Majority Voting Mode
+        elif "self_consistency" in intent or "consistency" in intent or "majority_vote" in intent:
+            res = self.self_consistency.evaluate_consensus(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 12. ReAct (Thought-Action-Observation) Mode
+        elif "react" in intent or "thought_action" in intent or intent == "act":
+            res = self.react.run_react(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 13. Agentic RAG & BM25 Inverted Index Retrieval Mode
+        elif "rag" in intent or "bm25" in intent or "retrieve" in intent or "search_docs" in intent:
+            res = self.rag.retrieve(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 14. Council Mode
         elif "council" in intent:
             deliberation = self.council.deliberate(goal, {})
             return {

@@ -10,8 +10,9 @@ from .executor import ThinkExecutor, ExecutionResult
 from .verifier import ObservableVerifier, VerificationResult
 from .recovery import RecoveryEngine, CircuitBreaker
 from .cancellation import CancellationToken, CancellationSource, OperationCancelledException
-from .audit import AuditLogger, sanitize_secrets
 from .memory import MemoryEngine
+from .guardrails import GuardrailsSystem
+from .dag_engine import DAGWorkflow, DAGNode
 
 __all__ = [
     "PreflightGate",
@@ -36,4 +37,7 @@ __all__ = [
     "AuditLogger",
     "sanitize_secrets",
     "MemoryEngine",
+    "GuardrailsSystem",
+    "DAGWorkflow",
+    "DAGNode",
 ]
