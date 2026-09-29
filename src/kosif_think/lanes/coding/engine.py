@@ -12,6 +12,7 @@ from .repo_mapper import RepoMapper
 from .debugger import AutonomousDebugger
 from .repo_search import RepoSearchEngine
 from .tdd_synthesizer import TDDSynthesizer
+from .swe_orchestrator import SWEAgentOrchestrator
 from ...core.cancellation import CancellationToken
 
 class CodingLane:
@@ -25,6 +26,7 @@ class CodingLane:
         self.debugger = AutonomousDebugger()
         self.search = RepoSearchEngine()
         self.tdd = TDDSynthesizer()
+        self.swe = SWEAgentOrchestrator()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Dispatches an action in the coding lane."""
@@ -127,6 +129,32 @@ class CodingLane:
             res = self.tdd.run_tdd_loop(requirement=req)
             res["lane"] = "coding"
             res["status"] = "ok" if res["success"] else "tdd_failed"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # 10. SWE-Agent & Aider Autonomous Software Engineering Mode
+        elif intent in ("swe", "swe_agent", "aider", "reproduce_issue", "pagerank"):
+            goal_or_issue = str(getattr(step, "value", "") or getattr(step, "description", ""))
+            args = getattr(step, "args", {}) or {}
+            if "pagerank" in intent or args.get("mode") == "pagerank":
+                symbols = args.get("symbols", {})
+                res = {"status": "ok", "lane": "coding", "mode": "symbol_pagerank", "ranks": self.swe.compute_symbol_pagerank(symbols)}
+            elif "fuzzy_patch" in intent or args.get("mode") == "fuzzy_patch":
+                orig = args.get("original", "")
+                tgt = args.get("target", "")
+                repl = args.get("replacement", "")
+                patch_res = self.swe.apply_fuzzy_patch(orig, tgt, repl)
+                res = {"status": "ok" if patch_res.get("success") else "error", "lane": "coding", "patch": patch_res}
+            else:
+                test_code = self.swe.synthesize_reproduction_test(goal_or_issue)
+                res = {
+                    "status": "ok",
+                    "lane": "coding",
+                    "mode": "swe_reproduction",
+                    "issue": goal_or_issue,
+                    "reproduction_test": test_code,
+                }
             res["changed"] = True
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res

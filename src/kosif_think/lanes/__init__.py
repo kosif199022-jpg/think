@@ -17,26 +17,32 @@ Unified Execution lanes for KOSIF Think (Super-Intelligence & Multi-Device Editi
 from .reasoning import (
     ReasoningLane, CouncilReasoning, CognitiveUnderstanding,
     TreeOfThoughts, GraphOfThoughts, ReflexionEngine, MCTSPlanner,
-    DSPyOptimizer, DSPySignature, MultiAgentGraph, RepoIntelligence
+    DSPyOptimizer, DSPySignature, MultiAgentGraph, RepoIntelligence,
+    CodeAgentInterpreter, RLVRReasoner
 )
 from .coding import (
     CodingLane, ASTCodeParser, AtomicPatcher,
-    TestSandbox, RepoMapper, AutonomousDebugger
+    TestSandbox, RepoMapper, AutonomousDebugger,
+    SWEAgentOrchestrator
 )
 from .graphics import (
     GraphicsLane, SVGBuilder, DiagramSynthesizer,
     GenerativeCanvas, VisualLayoutAnalyzer
 )
 from .computer import ComputerLane, AppControl, FileControl, ScreenState
-from .browser import BrowserLane, ActionGraph, JevDecisionRouter, PlaywrightCDPClient
+from .browser import (
+    BrowserLane, ActionGraph, JevDecisionRouter, PlaywrightCDPClient,
+    BrowserUseEngine
+)
 from .whatsapp import WhatsAppLane, WhatsAppBridge
 from .ios import IOSLane, ShortcutsBridge, WDAClient
 from .voice import VoiceLane, VoiceSynthesizer, AudioTranscriber
-from .mobile import MobileLane, AndroidController
+from .mobile import MobileLane, AndroidController, AppAgentOrchestrator
 from .telephony import TelephonyLane, CallManager, AstraVoiceSession
 from .research import (
     ResearchLane, AcademicSearchEngine, AcademicPaper,
-    LiteratureReviewSynthesizer, LatexBuilder, CitationEngine, StatisticalVerifier
+    LiteratureReviewSynthesizer, LatexBuilder, CitationEngine, StatisticalVerifier,
+    PerspectiveResearchEngine
 )
 from .office import (
     OfficeLane, WordDocumentBuilder, PowerPointBuilder, Slide,
@@ -55,12 +61,15 @@ __all__ = [
     "DSPySignature",
     "MultiAgentGraph",
     "RepoIntelligence",
+    "CodeAgentInterpreter",
+    "RLVRReasoner",
     "CodingLane",
     "ASTCodeParser",
     "AtomicPatcher",
     "TestSandbox",
     "RepoMapper",
     "AutonomousDebugger",
+    "SWEAgentOrchestrator",
     "GraphicsLane",
     "SVGBuilder",
     "DiagramSynthesizer",
@@ -74,6 +83,7 @@ __all__ = [
     "ActionGraph",
     "JevDecisionRouter",
     "PlaywrightCDPClient",
+    "BrowserUseEngine",
     "WhatsAppLane",
     "WhatsAppBridge",
     "IOSLane",
@@ -84,6 +94,7 @@ __all__ = [
     "AudioTranscriber",
     "MobileLane",
     "AndroidController",
+    "AppAgentOrchestrator",
     "TelephonyLane",
     "CallManager",
     "AstraVoiceSession",
@@ -94,6 +105,7 @@ __all__ = [
     "LatexBuilder",
     "CitationEngine",
     "StatisticalVerifier",
+    "PerspectiveResearchEngine",
     "OfficeLane",
     "WordDocumentBuilder",
     "PowerPointBuilder",

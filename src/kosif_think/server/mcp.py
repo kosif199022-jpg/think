@@ -57,11 +57,11 @@ TOOLS_DEFINITION = [
     },
     {
         "name": "think_code_action",
-        "description": "Runs AST parsing, codebase mapping, test running, debugging, regex search, symbols lookup, directory tree, or TDD loop.",
+        "description": "Runs AST parsing, codebase mapping, test running, debugging, regex search, symbols lookup, directory tree, TDD loop, or SWE-agent reproduction.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "action": {"type": "string", "enum": ["analyze", "repo_map", "test", "debug", "search", "symbols", "tree", "tdd"]},
+                "action": {"type": "string", "enum": ["analyze", "repo_map", "test", "debug", "search", "symbols", "tree", "tdd", "swe"]},
                 "target": {"type": "string", "description": "File path, directory, regex pattern, or spec."}
             },
             "required": ["action"]
@@ -136,11 +136,11 @@ TOOLS_DEFINITION = [
     },
     {
         "name": "think_mobile_action",
-        "description": "Controls Android (ADB) and iOS smartphones: tap, swipe, launch app, dial call, send SMS, or dump UI elements.",
+        "description": "Controls Android (ADB) and iOS smartphones: tap, swipe, launch app, dial call, send SMS, dump UI elements, or AppAgent subgoals.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "intent": {"type": "string", "enum": ["tap", "swipe", "launch_app", "dial", "sms", "locate", "home", "back", "type"]},
+                "intent": {"type": "string", "enum": ["tap", "swipe", "launch_app", "dial", "sms", "locate", "home", "back", "type", "subgoals"]},
                 "target": {"type": "string", "description": "Target app, phone number, or search query."},
                 "value": {"type": "string", "description": "Value or coordinates, e.g. '500,800' or message text."},
                 "platform": {"type": "string", "enum": ["android", "ios", "auto"]}
@@ -163,11 +163,11 @@ TOOLS_DEFINITION = [
     },
     {
         "name": "think_scientific_research",
-        "description": "Searches ArXiv/PubMed academic papers, synthesizes literature reviews, compiles LaTeX documents, or validates statistical p-values.",
+        "description": "Searches ArXiv/PubMed academic papers, synthesizes literature reviews, compiles LaTeX documents, validates statistical p-values, or explores multi-perspective trees.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "intent": {"type": "string", "enum": ["search", "review", "latex", "bibtex", "stats"]},
+                "intent": {"type": "string", "enum": ["search", "review", "latex", "bibtex", "stats", "perspectives", "question_tree"]},
                 "target": {"type": "string", "description": "Search topic, paper title, or DOI."},
                 "value": {"type": "string", "description": "Topic or abstract input."}
             },
@@ -199,6 +199,28 @@ TOOLS_DEFINITION = [
                 "system_instruction": {"type": "string", "description": "System role prompt."}
             },
             "required": ["prompt"]
+        }
+    },
+    {
+        "name": "think_rlvr",
+        "description": "Executes DeepSeek-R1 / Open-R1 verifiable reward search across candidate reasoning rollouts.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "problem": {"type": "string", "description": "The complex problem or theorem to verify."}
+            },
+            "required": ["problem"]
+        }
+    },
+    {
+        "name": "think_code_agent",
+        "description": "Executes expressive Smolagents-style Python action scripts with pre-bound capabilities.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "The Python action script to execute safely."}
+            },
+            "required": ["code"]
         }
     }
 ]
@@ -334,6 +356,20 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> Dict[str, An
         model_id = arguments.get("model", "deepseek-r1")
         system_inst = arguments.get("system_instruction")
         return engine.run_inference(prompt, model_id=model_id, system_instruction=system_inst)
+    elif name == "think_rlvr":
+        prob = arguments.get("problem", "")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="rlvr", value=prob))
+        return {"error": "Reasoning lane not available"}
+    elif name == "think_code_agent":
+        code = arguments.get("code", "")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="code_agent", value=code))
+        return {"error": "Reasoning lane not available"}
     return {"error": f"Unknown tool: {name}"}
 
 async def run_mcp_stdio():

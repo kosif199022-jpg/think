@@ -113,6 +113,15 @@ def main(args: Optional[List[str]] = None):
     # Command: repo-intel
     p_ri = subparsers.add_parser("repo-intel", help="Search and ingest open-source architectural patterns from GitHub")
     p_ri.add_argument("query", type=str, help="Framework or architectural pattern to investigate")
+    p_ri.add_argument("--strategy", action="store_true", help="Synthesize cross-repo super agent strategy")
+
+    # Command: rlvr (DeepSeek-R1 / Open-R1)
+    p_rlvr = subparsers.add_parser("rlvr", help="Run DeepSeek-R1 / Open-R1 verifiable reward search")
+    p_rlvr.add_argument("problem", type=str, help="Problem requiring verifiable search and reward rollouts")
+
+    # Command: code-agent (Smolagents)
+    p_ca = subparsers.add_parser("code-agent", help="Run Smolagents-style safe Python code agent")
+    p_ca.add_argument("code", type=str, help="Python code block to safely execute")
 
     # Command: cove (Chain-of-Verification)
     p_cove = subparsers.add_parser("cove", help="Run Meta Chain-of-Verification (CoVe) 4-step hallucination check")
@@ -147,8 +156,8 @@ def main(args: Optional[List[str]] = None):
     p_guard.add_argument("text", type=str, help="Prompt or text to scan")
 
     # Command: code
-    p_code = subparsers.add_parser("code", help="Code intelligence, AST parsing, grep, tree, TDD, testing, and debugging")
-    p_code.add_argument("action", choices=["analyze", "map", "test", "debug", "search", "symbols", "tree", "tdd"], help="Coding action")
+    p_code = subparsers.add_parser("code", help="Code intelligence, AST parsing, grep, tree, TDD, testing, debugging, and SWE-agent")
+    p_code.add_argument("action", choices=["analyze", "map", "test", "debug", "search", "symbols", "tree", "tdd", "swe"], help="Coding action")
     p_code.add_argument("target", nargs="?", default=".", help="File path, directory, regex pattern, or spec")
 
     # Command: graphic
@@ -207,7 +216,7 @@ def main(args: Optional[List[str]] = None):
 
     # Command: mobile
     p_mobile = subparsers.add_parser("mobile", help="Control Android & iOS smartphone devices")
-    p_mobile.add_argument("action", choices=["tap", "swipe", "app", "dial", "sms", "locate", "home", "back", "type", "info"], help="Mobile action")
+    p_mobile.add_argument("action", choices=["tap", "swipe", "app", "dial", "sms", "locate", "home", "back", "type", "info", "subgoals"], help="Mobile action")
     p_mobile.add_argument("value", nargs="?", default="", help="Coordinates (x,y), package name, phone number, or text")
     p_mobile.add_argument("--platform", choices=["android", "ios", "auto"], default="auto")
 
@@ -219,7 +228,7 @@ def main(args: Optional[List[str]] = None):
 
     # Command: research
     p_res = subparsers.add_parser("research", help="Scientific literature search, reviews, LaTeX, citations, and statistics")
-    p_res.add_argument("action", choices=["search", "review", "latex", "bibtex", "stats"], help="Research action")
+    p_res.add_argument("action", choices=["search", "review", "latex", "bibtex", "stats", "perspectives", "tree"], help="Research action")
     p_res.add_argument("value", nargs="?", default="", help="Paper topic, title, or formula")
     p_res.add_argument("--limit", type=int, default=5, help="Maximum papers to retrieve")
 
@@ -341,15 +350,56 @@ def main(args: Optional[List[str]] = None):
     elif parsed.command == "repo-intel":
         r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
         from .core.planner import Step
-        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="repo_intel", value=parsed.query)))
+        if getattr(parsed, "strategy", False):
+            res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="repo_strategy", value=parsed.query)))
+            strat = res.get("strategy", {})
+            print("=" * 60)
+            print(f"🌟 Cross-Repo Super-Agent Strategy: '{strat.get('goal')}'")
+            print("=" * 60)
+            print("Architectural Blueprint:")
+            for p in strat.get("architecture_blueprint", []):
+                print(f"  • {p['repo']}: {p['feature']} -> {p['integration_module']}")
+            print("\nExecution Steps:")
+            for s in strat.get("execution_steps", []):
+                print(f"  {s['phase']}. [{s['lane'].upper()}] {s['task']}")
+        else:
+            res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="repo_intel", value=parsed.query)))
+            print("=" * 60)
+            print(f"🔍 Open-Source Repository Intelligence: '{parsed.query}'")
+            print("=" * 60)
+            for r in res.get("matched_repos", []):
+                print(f"  ⭐ {r['full_name']} ({r['stars']} stars) - {r['description']}")
+            print("\nExtracted Invariants:")
+            for p in res.get("extracted_patterns", []):
+                print(f"  • {p['repo']}: {p['architecture']['paradigm']}")
+
+    elif parsed.command == "rlvr":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="rlvr", value=parsed.problem)))
         print("=" * 60)
-        print(f"🔍 Open-Source Repository Intelligence: '{parsed.query}'")
+        print(f"🎯 DeepSeek-R1 / Open-R1 RLVR Search (Rollouts: {res.get('rollouts_evaluated')})")
         print("=" * 60)
-        for r in res.get("matched_repos", []):
-            print(f"  ⭐ {r['full_name']} ({r['stars']} stars) - {r['description']}")
-        print("\nExtracted Invariants:")
-        for p in res.get("extracted_patterns", []):
-            print(f"  • {p['repo']}: {p['architecture']['paradigm']}")
+        print(f"Reward: {res.get('verification_reward')} | Sound: {res.get('is_sound')} | Invariants: {res.get('invariants_passed')}")
+        print(f"Hypothesis: {res.get('optimal_hypothesis')}")
+        print(f"Synthesized Solution: {res.get('synthesized_solution')}")
+        print("\nReasoning Trajectory:")
+        for s in res.get("reasoning_steps", []):
+            print(f"  ➜ {s}")
+
+    elif parsed.command == "code-agent":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(step_id=1, lane="reasoning", intent="code_agent", value=parsed.code)))
+        print("=" * 60)
+        print("🐍 Smolagents CodeAgent Execution")
+        print(f"Status: {res.get('status', 'ok').upper()} | Latency: {res.get('latency_ms')} ms")
+        if res.get("output"):
+            print(f"Output:\n{res.get('output')}")
+        if res.get("result") is not None and res.get("result") != res.get("output"):
+            print(f"Result: {res.get('result')}")
+        if res.get("error"):
+            print(f"Error: {res.get('error')}")
 
     elif parsed.command == "cove":
         r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
@@ -475,7 +525,8 @@ def main(args: Optional[List[str]] = None):
             "search": "search",
             "symbols": "symbols",
             "tree": "tree",
-            "tdd": "tdd"
+            "tdd": "tdd",
+            "swe": "swe"
         }
         res = asyncio.run(c_lane.dispatch_step(Step(step_id=1, lane="coding", intent=intent_map[parsed.action], value=parsed.target)))
         print("=" * 60)
@@ -659,9 +710,9 @@ def main(args: Optional[List[str]] = None):
     elif parsed.command == "mobile":
         m_lane: MobileLane = executor._lane_handlers["mobile"]
         from .core.planner import Step
-        intent_map = {"app": "launch_app", "tap": "tap", "swipe": "swipe", "dial": "dial", "sms": "sms", "locate": "locate", "home": "home", "back": "back", "type": "type", "info": "info"}
+        intent_map = {"app": "launch_app", "tap": "tap", "swipe": "swipe", "dial": "dial", "sms": "sms", "locate": "locate", "home": "home", "back": "back", "type": "type", "info": "info", "subgoals": "subgoals"}
         intent = intent_map.get(parsed.action, parsed.action)
-        step = Step(step_id=1, lane="mobile", intent=intent, value=parsed.value, args={"platform": parsed.platform})
+        step = Step(step_id=1, lane="mobile", intent=intent, value=parsed.value, args={"platform": parsed.platform, "app": parsed.value})
         res = asyncio.run(m_lane.dispatch_step(step))
         print("=" * 60)
         print(f"📱 Mobile Lane Action: [{parsed.action.upper()}] ({parsed.platform})")
@@ -683,7 +734,8 @@ def main(args: Optional[List[str]] = None):
     elif parsed.command == "research":
         r_lane: ResearchLane = executor._lane_handlers["research"]
         from .core.planner import Step
-        intent = parsed.action
+        intent_map = {"search": "search", "review": "review", "latex": "latex", "bibtex": "bibtex", "stats": "stats", "perspectives": "perspectives", "tree": "question_tree"}
+        intent = intent_map.get(parsed.action, parsed.action)
         step = Step(step_id=1, lane="research", intent=intent, value=parsed.value, args={"limit": parsed.limit})
         res = asyncio.run(r_lane.dispatch_step(step))
         print("=" * 60)

@@ -12,6 +12,7 @@ from .cloud_session import CloudSessionManager, CloudBrowserSession, CloudTab
 from .jev_controller import JevCloudController
 from .jev_scraper import JevWebScraper
 from .cloud_view import render_cloud_browser_html
+from .browser_use_engine import BrowserUseEngine
 
 __all__ = [
     "BrowserLane",
@@ -28,4 +29,5 @@ __all__ = [
     "JevCloudController",
     "JevWebScraper",
     "render_cloud_browser_html",
+    "BrowserUseEngine",
 ]

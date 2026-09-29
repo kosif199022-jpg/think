@@ -24,6 +24,8 @@ from .rag_engine import AgenticRAGEngine
 from .deep_think import DeepThinkingEngine
 from .symbolic_verifier import SymbolicVerifier
 from .thought_map import CognitiveThoughtMap
+from .code_agent import CodeAgentInterpreter
+from .rlvr_reasoner import RLVRReasoner
 from ...core.cancellation import CancellationToken
 
 class ReasoningLane:
@@ -48,6 +50,8 @@ class ReasoningLane:
         self.deep_think = DeepThinkingEngine()
         self.symbolic = SymbolicVerifier()
         self.thought_map = CognitiveThoughtMap()
+        self.code_agent = CodeAgentInterpreter()
+        self.rlvr = RLVRReasoner()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Executes a reasoning step via the requested cognitive paradigm."""
@@ -126,7 +130,18 @@ class ReasoningLane:
             return res
 
         # 7. Open-Source Repo Intelligence
-        elif "repo_intel" in intent or "open_source" in intent or "github" in intent:
+        elif "repo_intel" in intent or "open_source" in intent or "github" in intent or "strategy" in intent:
+            if "strategy" in intent or goal.startswith("strategy:"):
+                clean_goal = goal.replace("strategy:", "").strip()
+                strat = self.repo_intel.synthesize_super_agent_strategy(clean_goal)
+                return {
+                    "status": "ok",
+                    "lane": "reasoning",
+                    "mode": "repo_strategy",
+                    "strategy": strat,
+                    "changed": True,
+                    "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+                }
             repos = self.repo_intel.search_github_repos(goal)
             patterns = [self.repo_intel.ingest_architectural_pattern(r["full_name"]) for r in repos[:3]]
             return {
@@ -138,6 +153,26 @@ class ReasoningLane:
                 "changed": True,
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
             }
+
+        # RLVR: DeepSeek-R1 / Open-R1 Rule-Based Verifiable Rewards
+        elif "rlvr" in intent or "verifiable_reward" in intent or "open_r1" in intent:
+            res = self.rlvr.deep_seek_rlvr_search(goal)
+            res["status"] = "ok"
+            res["lane"] = "reasoning"
+            res["mode"] = "rlvr_reasoning"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        # Smolagents: CodeAgent Safe Python Execution
+        elif "code_agent" in intent or "smolagents" in intent or "python_agent" in intent:
+            res = self.code_agent.execute_python_action(goal)
+            res["status"] = "ok" if res.get("success") else "error"
+            res["lane"] = "reasoning"
+            res["mode"] = "code_agent"
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
 
         # 8. Chain-of-Verification (CoVe) Mode
         elif "cove" in intent or "verification" in intent or "chain_of_verification" in intent:

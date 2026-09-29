@@ -7,6 +7,7 @@ from .literature_review import LiteratureReviewSynthesizer
 from .latex_builder import LatexBuilder
 from .citations import CitationEngine
 from .stats_verifier import StatisticalVerifier
+from .storm_engine import PerspectiveResearchEngine
 from .engine import ResearchLane
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "LatexBuilder",
     "CitationEngine",
     "StatisticalVerifier",
+    "PerspectiveResearchEngine",
     "ResearchLane"
 ]

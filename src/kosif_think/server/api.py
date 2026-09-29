@@ -342,6 +342,33 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             res = asyncio.run(o_lane.dispatch_step(step))
             self._send_json(200, res)
 
+        # RLVR Verifiable Reward Search (DeepSeek-R1 / Open-R1)
+        elif path in ("/api/rlvr/search", "/api/v1/rlvr"):
+            r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+            from ..core.planner import Step
+            prob = payload.get("problem") or payload.get("goal") or ""
+            step = Step(step_id=1, lane="reasoning", intent="rlvr", value=prob)
+            res = asyncio.run(r_lane.dispatch_step(step))
+            self._send_json(200, res)
+
+        # Smolagents CodeAgent Execution
+        elif path in ("/api/code-agent/run", "/api/v1/code_agent"):
+            r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+            from ..core.planner import Step
+            code = payload.get("code") or payload.get("script") or ""
+            step = Step(step_id=1, lane="reasoning", intent="code_agent", value=code)
+            res = asyncio.run(r_lane.dispatch_step(step))
+            self._send_json(200, res)
+
+        # Cross-Repo Super-Agent Strategy
+        elif path in ("/api/repo-intel/strategy", "/api/v1/strategy"):
+            r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+            from ..core.planner import Step
+            goal = payload.get("goal") or payload.get("query") or ""
+            step = Step(step_id=1, lane="reasoning", intent="repo_strategy", value=goal)
+            res = asyncio.run(r_lane.dispatch_step(step))
+            self._send_json(200, res)
+
         else:
             self._send_json(404, {"ok": False, "error": "Endpoint not found"})
 

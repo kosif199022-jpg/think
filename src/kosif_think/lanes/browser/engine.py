@@ -11,6 +11,7 @@ from .playwright_cdp import PlaywrightCDPClient
 from .cloud_session import CloudSessionManager
 from .jev_controller import JevCloudController
 from .jev_scraper import JevWebScraper
+from .browser_use_engine import BrowserUseEngine
 from ...core.cancellation import CancellationToken
 
 class BrowserLane:
@@ -23,6 +24,7 @@ class BrowserLane:
         self.cloud_manager = CloudSessionManager()
         self.jev_cloud = JevCloudController(session_manager=self.cloud_manager)
         self.scraper = JevWebScraper()
+        self.browser_use = BrowserUseEngine()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Dispatches an action in the browser lane."""
@@ -128,6 +130,30 @@ class BrowserLane:
                 "changed": True,
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
             }
+
+        # 12. Browser-Use Vision & Set-of-Marks Mode
+        elif intent in ("browser_use", "flatten_dom", "som_index", "stealth_mouse"):
+            val_str = str(getattr(step, "value", "") or "")
+            args = getattr(step, "args", {}) or {}
+            if "mouse" in intent or args.get("mode") == "stealth_mouse":
+                start_pt = tuple(args.get("start", (100, 100)))
+                end_pt = tuple(args.get("end", (500, 400)))
+                pts = self.browser_use.generate_stealth_mouse_curve(start_pt, end_pt)
+                res = {"status": "ok", "lane": "browser", "mode": "stealth_mouse", "points_count": len(pts), "trajectory": pts}
+            else:
+                html = val_str or "<html><body><button id='btn'>Submit</button><input name='q' placeholder='Search'/></body></html>"
+                elements = self.browser_use.flatten_dom(html)
+                res = {
+                    "status": "ok",
+                    "lane": "browser",
+                    "mode": "flatten_dom",
+                    "element_count": len(elements),
+                    "interactive_elements": elements,
+                    "action_space": self.browser_use.get_current_action_space()
+                }
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
 
         # 12. Default Observe
         return {

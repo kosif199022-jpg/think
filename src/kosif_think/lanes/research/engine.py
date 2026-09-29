@@ -11,6 +11,7 @@ from .literature_review import LiteratureReviewSynthesizer
 from .latex_builder import LatexBuilder
 from .citations import CitationEngine
 from .stats_verifier import StatisticalVerifier
+from .storm_engine import PerspectiveResearchEngine
 from ...core.cancellation import CancellationToken
 
 class ResearchLane:
@@ -22,6 +23,7 @@ class ResearchLane:
         self.latex = LatexBuilder()
         self.citations = CitationEngine()
         self.stats = StatisticalVerifier()
+        self.storm = PerspectiveResearchEngine()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Dispatches an action in the research lane."""
@@ -116,6 +118,28 @@ class ResearchLane:
                 "lane": "research",
                 "t_test": t_res,
                 "confidence_interval": ci_res,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # 6. Co-STORM Perspective-Guided Academic Exploration
+        elif intent in ("storm", "perspectives", "question_tree", "academic_tree"):
+            topic = target_ref or str(val or "Frontier Artificial Intelligence")
+            if "tree" in intent or args.get("mode") == "tree":
+                q_tree = self.storm.generate_question_tree(topic)
+                return {
+                    "status": "ok",
+                    "lane": "research",
+                    "mode": "question_tree",
+                    "tree": q_tree,
+                    "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+                }
+            persp = self.storm.expand_perspectives(topic)
+            return {
+                "status": "ok",
+                "lane": "research",
+                "mode": "multi_perspective",
+                "topic": topic,
+                "perspectives": persp,
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
             }
 

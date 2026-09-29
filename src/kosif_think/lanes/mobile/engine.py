@@ -12,6 +12,7 @@ import re
 from .android import AndroidController
 from ..ios.shortcuts_bridge import ShortcutsBridge
 from ..ios.wda_client import WDAClient
+from .app_agent import AppAgentOrchestrator
 from ...core.cancellation import CancellationToken
 
 class MobileLane:
@@ -22,6 +23,7 @@ class MobileLane:
         self.android = AndroidController()
         self.ios_shortcuts = ShortcutsBridge()
         self.ios_wda = WDAClient()
+        self.app_agent = AppAgentOrchestrator(self.android)
 
     def detect_platform(self, target_hint: Optional[str] = None) -> str:
         """Determines whether the target device is Android or iOS."""
@@ -146,6 +148,20 @@ class MobileLane:
                 res = {"status": "ok", "action": "type", "platform": "ios", "text": text}
             else:
                 res = self.android.input_text(text)
+            result.update(res)
+
+        # 9. AppAgent Autonomous Subgoal Planning
+        elif intent in ("subgoals", "app_agent", "plan_subgoals"):
+            goal_desc = str(val or target_ref or "explore application")
+            app_target = str(args.get("app") or target_ref or "target_app")
+            subgoals = self.app_agent.plan_subgoals_for_app(goal_desc, app_target)
+            res = {
+                "status": "ok",
+                "action": "app_agent_subgoals",
+                "goal": goal_desc,
+                "app": app_target,
+                "subgoals": subgoals,
+            }
             result.update(res)
 
         # 9. Device Info / Status

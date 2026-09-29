@@ -21,6 +21,8 @@ from .rag_engine import AgenticRAGEngine, BM25Index, Document
 from .deep_think import DeepThinkingEngine, DeepThoughtPhase
 from .symbolic_verifier import SymbolicVerifier
 from .thought_map import CognitiveThoughtMap, ThoughtMapNode, ThoughtNodeCategory
+from .code_agent import CodeAgentInterpreter
+from .rlvr_reasoner import RLVRReasoner
 
 __all__ = [
     "ReasoningLane",
@@ -51,4 +53,6 @@ __all__ = [
     "CognitiveThoughtMap",
     "ThoughtMapNode",
     "ThoughtNodeCategory",
+    "CodeAgentInterpreter",
+    "RLVRReasoner",
 ]
