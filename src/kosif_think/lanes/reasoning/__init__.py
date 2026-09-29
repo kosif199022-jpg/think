@@ -23,6 +23,13 @@ from .symbolic_verifier import SymbolicVerifier
 from .thought_map import CognitiveThoughtMap, ThoughtMapNode, ThoughtNodeCategory
 from .code_agent import CodeAgentInterpreter
 from .rlvr_reasoner import RLVRReasoner
+from .affective_engine import (
+    AffectiveCognitiveEngine,
+    EmotionalPersonaType,
+    EmotionalPerspectiveOutput,
+    AffectiveSynthesis,
+    PsychologicalReference,
+)
 
 __all__ = [
     "ReasoningLane",
@@ -55,4 +62,9 @@ __all__ = [
     "ThoughtNodeCategory",
     "CodeAgentInterpreter",
     "RLVRReasoner",
+    "AffectiveCognitiveEngine",
+    "EmotionalPersonaType",
+    "EmotionalPerspectiveOutput",
+    "AffectiveSynthesis",
+    "PsychologicalReference",
 ]

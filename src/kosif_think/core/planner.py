@@ -29,6 +29,7 @@ class Step:
     timeout_ms: int = 15000
     description: str = ""
     args: Dict[str, Any] = field(default_factory=dict)
+    context: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class Plan:

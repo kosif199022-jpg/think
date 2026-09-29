@@ -222,6 +222,25 @@ TOOLS_DEFINITION = [
             },
             "required": ["code"]
         }
+    },
+    {
+        "name": "think_affective_cognition",
+        "description": "Executes psychological & affective cognitive deliberation across 11 personas (Self-Critic, Ambitious, Frustrated, Optimist, Astonished, Skeptic, Betrayal-Wary, Hasty, Slow, Villain, Brutally Frank) and Metacognitive Executive Ego.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal": {"type": "string", "description": "The goal, problem, or decision to deliberate."},
+                "persona": {
+                    "type": "string",
+                    "description": "Optional specific persona focus",
+                    "enum": [
+                        "self_critic", "ambitious", "frustrated", "optimist", "astonished",
+                        "skeptic", "betrayal_wary", "hasty", "slow_meticulous", "villain", "brutally_frank"
+                    ]
+                }
+            },
+            "required": ["goal"]
+        }
     }
 ]
 
@@ -369,6 +388,20 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> Dict[str, An
         if handler:
             from ..core.planner import Step
             return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="code_agent", value=code))
+        return {"error": "Reasoning lane not available"}
+    elif name == "think_affective_cognition":
+        goal = arguments.get("goal", "")
+        persona = arguments.get("persona")
+        handler = executor._lane_handlers.get("reasoning")
+        if handler:
+            from ..core.planner import Step
+            return await handler.dispatch_step(Step(
+                step_id=1,
+                lane="reasoning",
+                intent="affective",
+                value=goal,
+                context={"persona": persona} if persona else {}
+            ))
         return {"error": "Reasoning lane not available"}
     return {"error": f"Unknown tool: {name}"}
 

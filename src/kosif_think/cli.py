@@ -242,8 +242,17 @@ def main(args: Optional[List[str]] = None):
     # Command: open-models
     p_om = subparsers.add_parser("open-models", help="Open-source AI models hub (DeepSeek-R1, Qwen 2.5, Llama 3.3, Ollama)")
     p_om.add_argument("action", choices=["list", "run", "benchmark", "status"], help="Open-source models action")
-    p_om.add_argument("prompt", nargs="?", default="", help="Inference prompt or query")
+    p_prompt_help = "Inference prompt or query"
+    p_om.add_argument("prompt", nargs="?", default="", help=p_prompt_help)
     p_om.add_argument("--model", default="deepseek-r1", help="Target model identifier")
+
+    # Command: affective (Psychological & Emotional Cognitive Architecture)
+    p_aff = subparsers.add_parser("affective", help="Affective & psychological cognitive deliberation (11 personas + Executive Ego)")
+    p_aff.add_argument("goal", help="The goal, dilemma, or instruction to evaluate")
+    p_aff.add_argument("--persona", choices=[
+        "self_critic", "ambitious", "frustrated", "optimist", "astonished",
+        "skeptic", "betrayal_wary", "hasty", "slow_meticulous", "villain", "brutally_frank"
+    ], default=None, help="Focus on a specific emotional/psychological persona")
 
     parsed = parser.parse_args(args)
 
@@ -787,6 +796,42 @@ def main(args: Optional[List[str]] = None):
             if res.get("think_buffer"):
                 print("\n<think>\n" + res["think_buffer"] + "\n</think>\n")
             print(res["response"])
+
+    elif parsed.command == "affective":
+        r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+        from .core.planner import Step
+        res = asyncio.run(r_lane.dispatch_step(Step(
+            step_id=1,
+            lane="reasoning",
+            intent="affective",
+            value=parsed.goal,
+            context={"persona": parsed.persona} if parsed.persona else {}
+        )))
+        print("=" * 70)
+        print("🧠 KOSIF Think Affective & Psychological Cognitive Architecture")
+        print("=" * 70)
+        if parsed.persona:
+            print(f"🎭 Persona: {res.get('arabic_title')} ({res.get('persona')})")
+            print(f"📊 Intensity: {res.get('intensity')} | Duty: {res.get('cognitive_duty')}")
+            pb = res.get('psychological_basis', {})
+            print(f"📚 Psychological Authority: {pb.get('author')} ({pb.get('work')})")
+            print(f"💡 Deliberation:\n  {res.get('deliberation')}")
+            print(f"⚡ Directive:\n  ➜ {res.get('directive')}")
+            if res.get('risk_flags'):
+                print(f"⚠️ Flags: {', '.join(res.get('risk_flags'))}")
+        else:
+            print(f"🎯 Dominant Emotion: {res.get('dominant_emotion')} | Cognitive Equilibrium: {res.get('cognitive_equilibrium_score')}")
+            print("\n🎭 Emotional Vector (11 Cognitive Personas):")
+            for p, val in res.get("emotional_vector", {}).items():
+                print(f"  • {p:<18}: {val}")
+            if res.get("detected_distortions"):
+                print(f"\n🔍 Detected Cognitive Distortions ({len(res.get('detected_distortions'))}):")
+                for d in res.get("detected_distortions"):
+                    print(f"  ❌ {d.get('distortion')} ({d.get('arabic_name')}): {d.get('rational_rebuttal')}")
+            print("\n📋 Executive Action Plan (Harmonized by Metacognitive Ego):")
+            for plan_item in res.get("executive_action_plan", []):
+                print(f"  {plan_item}")
+        print(f"\n⏱️ Latency: {res.get('latency_ms')} ms")
 
     elif parsed.command == "status":
         print("=" * 60)

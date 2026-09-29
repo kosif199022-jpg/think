@@ -369,6 +369,19 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             res = asyncio.run(r_lane.dispatch_step(step))
             self._send_json(200, res)
 
+        # Affective & Psychological Cognitive Architecture (11 Personas + Executive Ego)
+        elif path in ("/api/affective/deliberate", "/api/v1/affective"):
+            r_lane: ReasoningLane = executor._lane_handlers["reasoning"]
+            from ..core.planner import Step
+            goal = payload.get("goal") or payload.get("problem") or ""
+            persona = payload.get("persona")
+            ctx = payload.get("context") or {}
+            if persona:
+                ctx["persona"] = persona
+            step = Step(step_id=1, lane="reasoning", intent="affective", value=goal, context=ctx)
+            res = asyncio.run(r_lane.dispatch_step(step))
+            self._send_json(200, res)
+
         else:
             self._send_json(404, {"ok": False, "error": "Endpoint not found"})
 
