@@ -18,7 +18,8 @@ from .reasoning import (
     ReasoningLane, CouncilReasoning, CognitiveUnderstanding,
     TreeOfThoughts, GraphOfThoughts, ReflexionEngine, MCTSPlanner,
     DSPyOptimizer, DSPySignature, MultiAgentGraph, RepoIntelligence,
-    CodeAgentInterpreter, RLVRReasoner
+    CodeAgentInterpreter, RLVRReasoner, AffectiveCognitiveEngine,
+    EmotionalPersonaType, AffectiveSynthesis
 )
 from .coding import (
     CodingLane, ASTCodeParser, AtomicPatcher,
@@ -63,6 +64,9 @@ __all__ = [
     "RepoIntelligence",
     "CodeAgentInterpreter",
     "RLVRReasoner",
+    "AffectiveCognitiveEngine",
+    "EmotionalPersonaType",
+    "AffectiveSynthesis",
     "CodingLane",
     "ASTCodeParser",
     "AtomicPatcher",

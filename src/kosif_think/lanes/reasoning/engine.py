@@ -26,6 +26,7 @@ from .symbolic_verifier import SymbolicVerifier
 from .thought_map import CognitiveThoughtMap
 from .code_agent import CodeAgentInterpreter
 from .rlvr_reasoner import RLVRReasoner
+from .affective_engine import AffectiveCognitiveEngine, EmotionalPersonaType
 from ...core.cancellation import CancellationToken
 
 class ReasoningLane:
@@ -52,6 +53,7 @@ class ReasoningLane:
         self.thought_map = CognitiveThoughtMap()
         self.code_agent = CodeAgentInterpreter()
         self.rlvr = RLVRReasoner()
+        self.affective = AffectiveCognitiveEngine()
 
     async def dispatch_step(self, step: Any, cancellation_token: Optional[CancellationToken] = None) -> Dict[str, Any]:
         """Executes a reasoning step via the requested cognitive paradigm."""
@@ -283,6 +285,29 @@ class ReasoningLane:
                 "changed": True,
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
             }
+
+        # 18. Affective & Psychological Cognitive Architecture (11 Personas + Executive Ego)
+        elif any(k in intent for k in ("affective", "psychological", "persona", "ego", "emotion")):
+            ctx = getattr(step, "context", {}) or {}
+            persona_name = ctx.get("persona") or getattr(step, "persona", None)
+            if persona_name:
+                try:
+                    p_enum = EmotionalPersonaType(persona_name)
+                    p_out = self.affective.deliberate_persona(p_enum, goal, ctx)
+                    res = p_out.to_dict()
+                    res["status"] = "ok"
+                    res["lane"] = "reasoning"
+                    res["mode"] = "affective_persona"
+                    res["changed"] = True
+                    res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+                    return res
+                except (ValueError, KeyError):
+                    pass
+            synthesis = self.affective.deliberate(goal, ctx)
+            res = synthesis.to_dict()
+            res["changed"] = True
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
 
         # 9. Fast Heuristic Mode (<5ms)
         else:
