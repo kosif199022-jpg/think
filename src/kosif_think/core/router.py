@@ -1,13 +1,13 @@
 """
 Capability Router: Selects the optimal execution lane and adapter based on intent,
-surface health, measured latency, and circuit breaker states across all 7 lanes.
+surface health, measured latency, and circuit breaker states across all 12 lanes.
 """
 
 from typing import Dict, Any, List, Optional
 import time
 
 class CapabilityRouter:
-    """Manages adaptive lane routing and health metrics across 7 lanes."""
+    """Manages adaptive lane routing and health metrics across 12 autonomous lanes."""
 
     def __init__(self):
         self._lane_health: Dict[str, Dict[str, Any]] = {
@@ -19,6 +19,10 @@ class CapabilityRouter:
             "whatsapp": {"available": True, "latency_ms": 60.0, "failure_count": 0, "circuit_open": False},
             "ios": {"available": True, "latency_ms": 40.0, "failure_count": 0, "circuit_open": False},
             "voice": {"available": True, "latency_ms": 25.0, "failure_count": 0, "circuit_open": False},
+            "mobile": {"available": True, "latency_ms": 30.0, "failure_count": 0, "circuit_open": False},
+            "telephony": {"available": True, "latency_ms": 35.0, "failure_count": 0, "circuit_open": False},
+            "research": {"available": True, "latency_ms": 40.0, "failure_count": 0, "circuit_open": False},
+            "office": {"available": True, "latency_ms": 20.0, "failure_count": 0, "circuit_open": False},
         }
 
     def route_step(self, lane_preference: str, intent: str) -> str:
@@ -30,7 +34,15 @@ class CapabilityRouter:
             return lane
 
         # Fallback hierarchy
-        if lane == "browser":
+        if lane == "mobile":
+            return "ios" if self._lane_health.get("ios", {}).get("available") else "computer"
+        elif lane == "telephony":
+            return "voice" if self._lane_health.get("voice", {}).get("available") else "mobile"
+        elif lane == "research":
+            return "reasoning"
+        elif lane == "office":
+            return "computer"
+        elif lane == "browser":
             return "computer"
         elif lane == "whatsapp":
             return "browser"
@@ -39,7 +51,7 @@ class CapabilityRouter:
         elif lane == "graphics":
             return "coding"
         elif lane == "ios":
-            return "computer"
+            return "mobile"
         elif lane == "voice":
             return "reasoning"
         return "reasoning"

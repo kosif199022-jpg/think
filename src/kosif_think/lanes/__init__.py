@@ -1,12 +1,17 @@
 """
-Unified Execution lanes for KOSIF Think:
-- Reasoning (Fast, Council, Cognitive, Tree of Thoughts, Graph of Thoughts, Reflexion, MCTS, DSPy, MultiAgentGraph, RepoIntelligence)
-- Coding (AST Parser, Atomic Patcher, Test Sandbox, Repo Mapper, Autonomous Debugger)
+Unified Execution lanes for KOSIF Think (Super-Intelligence & Multi-Device Edition):
+- Reasoning (Fast, Council, Cognitive, Tree of Thoughts, Graph of Thoughts, Reflexion, MCTS, DSPy, MultiAgentGraph, RepoIntelligence, ThoughtMap, DeepThink, Symbolic)
+- Coding (AST Parser, Atomic Patcher, Test Sandbox, Repo Mapper, Autonomous Debugger, TDD)
 - Graphics (SVG Builder, Diagram Synthesizer, Generative Canvas, Visual Layout Analyzer)
-- Computer (Windows UI Automation, apps, files, screen)
-- Browser (Jev-Browser action graph, CDP, persistent Chrome)
+- Computer (Windows UI Automation, apps, window focus, keystrokes, clipboard, files, screen)
+- Browser (Jev-Browser action graph, CDP, persistent Chrome, stealth bezier)
 - WhatsApp (Messaging, media, delivery verification)
 - iOS (Apple Shortcuts bridge, WDA developer client, iPhone control from ChatGPT)
+- Voice (SAPI Voice synthesis, SSML, Audio transcription)
+- Mobile (Unified Android ADB, UIAutomator, gestures, calling, SMS, iOS bridge)
+- Telephony (Voice calls, VoIP, SIP, Twilio, IVR, Astra real-time conversational voice)
+- Research (Academic ArXiv/PubMed search, literature reviews, LaTeX compilation, citations, statistics)
+- Office (Microsoft Word .docx, PowerPoint .pptx & HTML decks, Excel .xlsx formulas & financial modeling)
 """
 
 from .reasoning import (
@@ -27,6 +32,16 @@ from .browser import BrowserLane, ActionGraph, JevDecisionRouter, PlaywrightCDPC
 from .whatsapp import WhatsAppLane, WhatsAppBridge
 from .ios import IOSLane, ShortcutsBridge, WDAClient
 from .voice import VoiceLane, VoiceSynthesizer, AudioTranscriber
+from .mobile import MobileLane, AndroidController
+from .telephony import TelephonyLane, CallManager, AstraVoiceSession
+from .research import (
+    ResearchLane, AcademicSearchEngine, AcademicPaper,
+    LiteratureReviewSynthesizer, LatexBuilder, CitationEngine, StatisticalVerifier
+)
+from .office import (
+    OfficeLane, WordDocumentBuilder, PowerPointBuilder, Slide,
+    ExcelEngine, ExcelWorksheet
+)
 
 __all__ = [
     "ReasoningLane",
@@ -67,4 +82,22 @@ __all__ = [
     "VoiceLane",
     "VoiceSynthesizer",
     "AudioTranscriber",
+    "MobileLane",
+    "AndroidController",
+    "TelephonyLane",
+    "CallManager",
+    "AstraVoiceSession",
+    "ResearchLane",
+    "AcademicSearchEngine",
+    "AcademicPaper",
+    "LiteratureReviewSynthesizer",
+    "LatexBuilder",
+    "CitationEngine",
+    "StatisticalVerifier",
+    "OfficeLane",
+    "WordDocumentBuilder",
+    "PowerPointBuilder",
+    "Slide",
+    "ExcelEngine",
+    "ExcelWorksheet",
 ]

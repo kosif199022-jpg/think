@@ -38,6 +38,9 @@ class LLMRouter:
         "openai": ModelProvider("openai", "gpt-4o", cost_per_1k_input=0.005, cost_per_1k_output=0.015),
         "anthropic": ModelProvider("anthropic", "claude-3-5-sonnet", cost_per_1k_input=0.003, cost_per_1k_output=0.015),
         "gemini": ModelProvider("gemini", "gemini-2.5-flash", cost_per_1k_input=0.0001, cost_per_1k_output=0.0004),
+        "deepseek": ModelProvider("deepseek", "deepseek-r1", cost_per_1k_input=0.0005, cost_per_1k_output=0.002),
+        "qwen": ModelProvider("qwen", "qwen-2.5-coder-32b", cost_per_1k_input=0.0002, cost_per_1k_output=0.0005),
+        "llama": ModelProvider("llama", "llama-3.3-70b", cost_per_1k_input=0.0004, cost_per_1k_output=0.0008),
         "ollama": ModelProvider("ollama", "llama3:8b", cost_per_1k_input=0.0, cost_per_1k_output=0.0)  # Free local
     }
 
@@ -50,7 +53,7 @@ class LLMRouter:
     ):
         self.max_budget_usd = max_session_budget_usd if max_session_budget_usd is not None else max_budget_usd
         self.primary_provider = primary_provider
-        self.failover_order = [primary_provider, "gemini", "anthropic", "ollama"]
+        self.failover_order = [primary_provider, "deepseek", "qwen", "gemini", "anthropic", "ollama"]
         self.cumulative_prompt_tokens = 0
         self.cumulative_completion_tokens = 0
         self.cumulative_cost_usd = 0.0
@@ -75,6 +78,10 @@ class LLMRouter:
         """Routes prompt to the most optimal healthy provider."""
         if required_capability == "deep_reasoning":
             chosen = "anthropic" if self.CATALOG["anthropic"].is_healthy else "openai"
+        elif required_capability in ("open_deep_reasoning", "math", "analysis", "deepseek"):
+            chosen = "deepseek" if self.CATALOG.get("deepseek") and self.CATALOG["deepseek"].is_healthy else "anthropic"
+        elif required_capability in ("coding", "code", "ast"):
+            chosen = "qwen" if self.CATALOG.get("qwen") and self.CATALOG["qwen"].is_healthy else "openai"
         elif required_capability == "fast":
             chosen = "gemini" if self.CATALOG["gemini"].is_healthy else "openai"
         elif required_capability == "local":

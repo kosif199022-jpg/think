@@ -52,12 +52,16 @@ class TaskPlanner:
         steps: List[Step] = []
 
         # Analyze intent patterns
-        is_ios = bool(re.search(r'(?:آيفون|ايفون|iphone|ios|سيري|siri|تطبيق الجوال|اختصارات|shortcut|shortcuts)', goal, re.I))
-        is_whatsapp = bool(re.search(r'\b(whatsapp|واتساب|واتس|رسالة|ارسل لـ|شات)\b', goal, re.I))
-        is_voice = bool(re.search(r'\b(صوت|تحدث|نطق|انطق|تكلم|audio|voice|speech|tts|stt|whisper)\b', goal, re.I)) and not is_ios
+        is_office = bool(re.search(r'(?:ورد|وورد|بوربوينت|باوربوينت|بوربونت|اكسل|إكسل|word|docx|ppt|pptx|powerpoint|excel|xlsx|spreadsheet|financial_model)', goal, re.I))
+        is_research = bool(re.search(r'(?:بحث علمي|ورقة بحثية|دراسة|مراجع|أوراق علمية|arxiv|pubmed|latex|bibtex|literature review|scientific)', goal, re.I))
+        is_telephony = bool(re.search(r'(?:اتصال|مكالمة|هاتف|اتصل|dial|call|phone|sip|voip|twiml|meeting|اجتماع|zoom|google meet)', goal, re.I)) and not bool(re.search(r'(?:whatsapp|واتس)', goal, re.I))
+        is_mobile = bool(re.search(r'(?:جوال|أندرويد|اندرويد|android|adb|هاتف ذكي|تطبيق جوال|تطبيق الهاتف)', goal, re.I)) and not bool(re.search(r'(?:آيفون|ايفون|iphone|ios)', goal, re.I))
+        is_ios = bool(re.search(r'(?:آيفون|ايفون|iphone|ios|سيري|siri|اختصارات|shortcut|shortcuts)', goal, re.I))
+        is_whatsapp = bool(re.search(r'(?:whatsapp|واتساب|واتس|رسالة|ارسل لـ|شات)', goal, re.I))
+        is_voice = bool(re.search(r'\b(صوت|تحدث|نطق|انطق|تكلم|audio|voice|speech|tts|stt|whisper)\b', goal, re.I)) and not is_ios and not is_telephony
         is_coding = bool(re.search(r'\b(كود|برمجة|دالة|اختبار|فحص الكود|صلح|أصلح|fix|test|debug|ast|patch|refactor|python|code|repo_map)\b', goal, re.I))
         is_graphics = bool(re.search(r'\b(رسم|جرافيك|مخطط|دياجرام|diagram|mermaid|svg|canvas|واجهة|تصميم|flowchart|dashboard)\b', goal, re.I))
-        is_computer = bool(re.search(r'\b(افتح برنامج|شغل تطبيق|ملف|مفكرة|notepad|calc|word|excel|سطح المكتب|وندوز)\b', goal, re.I))
+        is_computer = bool(re.search(r'\b(افتح برنامج|شغل تطبيق|ملف|مفكرة|notepad|calc|سطح المكتب|وندوز)\b', goal, re.I))
         is_browser = bool(re.search(r'\b(تصفح|موقع|رابط|ابحث عن|google|chrome|url|http|كابتشا|صفحة|يوتيوب|متصفح سحابي|سحابي)\b', goal, re.I))
 
         # 0. iOS Lane Plan
@@ -105,6 +109,110 @@ class TaskPlanner:
                 expected_postconditions=[{"type": "voice_spoken"}],
                 risk_level="low",
                 description="توليد ونطق المخرجات الصوتية عبر Voice Lane"
+            ))
+
+        # 0.6 Mobile Smartphone Lane Plan (Android / Cross-Platform)
+        elif is_mobile:
+            if any(k in goal.lower() for k in ["انقر", "اضغط", "لمس", "tap"]):
+                intent = "tap"
+                desc = "النقر على شاشة الجوال"
+            elif any(k in goal.lower() for k in ["سحب", "تمرير", "swipe", "scroll"]):
+                intent = "swipe"
+                desc = "تمرير وسحب شاشة الجوال"
+            elif any(k in goal.lower() for k in ["رسالة", "sms"]):
+                intent = "sms"
+                desc = "إرسال رسالة SMS عبر الجوال"
+            elif any(k in goal.lower() for k in ["اتصل", "مكالمة", "dial"]):
+                intent = "dial"
+                desc = "إجراء مكالمة هاتفية عبر الجوال"
+            else:
+                intent = "launch_app"
+                desc = f"التحكم وتشغيل التطبيق على الجوال: {goal}"
+
+            steps.append(Step(
+                step_id=1,
+                lane="mobile",
+                intent=intent,
+                target=Target(kind="mobile_device", ref=goal),
+                value=goal,
+                expected_postconditions=[{"type": "mobile_action_completed"}],
+                risk_level="low",
+                description=desc
+            ))
+
+        # 0.7 Telephony & Call Lane Plan
+        elif is_telephony:
+            if any(k in goal.lower() for k in ["اجتماع", "meeting", "zoom", "meet", "teams"]):
+                intent = "meeting"
+                desc = "إنشاء رابط اجتماع افتراضي عبر Telephony Lane"
+            elif any(k in goal.lower() for k in ["astra", "تفاعل صوتي", "محادثة"]):
+                intent = "astra_session"
+                desc = "بدء جلسة حوارية صوتية فورية فائقة الذكاء (Astra)"
+            else:
+                intent = "dial"
+                desc = f"إجراء اتصال هاتفي عبر شبكة الاتصال: {goal}"
+
+            steps.append(Step(
+                step_id=1,
+                lane="telephony",
+                intent=intent,
+                target=Target(kind="telephony_dialer", ref=goal),
+                value=goal,
+                expected_postconditions=[{"type": "telephony_call_dispatched"}],
+                risk_level="medium",
+                description=desc
+            ))
+
+        # 0.8 Scientific Research Lane Plan
+        elif is_research:
+            if any(k in goal.lower() for k in ["latex", "لاتكس"]):
+                intent = "latex"
+                desc = "توليد وتنسيق ورقة بحثية علمية بصيغة LaTeX"
+            elif any(k in goal.lower() for k in ["دراسة", "مراجعة", "review", "survey"]):
+                intent = "review"
+                desc = "توليد مراجعة أدبيات شاملة ومصفوفة مقارنة علمية"
+            elif any(k in goal.lower() for k in ["مراجع", "bibtex", "cite"]):
+                intent = "bibtex"
+                desc = "استخراج وتنسيق الاستشهادات الأكاديمية وصيغة BibTeX"
+            elif any(k in goal.lower() for k in ["إحصاء", "احصاء", "دلالة", "p-value", "t-test"]):
+                intent = "stats"
+                desc = "التحقق من الدلالة الإحصائية والرصانة المنهجية للتجربة"
+            else:
+                intent = "search"
+                desc = f"البحث الأكاديمي الموسع في ArXiv والأوراق المحكمة: {goal}"
+
+            steps.append(Step(
+                step_id=1,
+                lane="research",
+                intent=intent,
+                target=Target(kind="academic_corpus", ref=goal),
+                value=goal,
+                expected_postconditions=[{"type": "research_synthesized"}],
+                risk_level="low",
+                description=desc
+            ))
+
+        # 0.9 Office Productivity Suite Plan (Word, PowerPoint, Excel)
+        elif is_office:
+            if any(k in goal.lower() for k in ["بوربوينت", "باوربوينت", "بوربونت", "ppt", "pptx", "presentation", "slides"]):
+                intent = "ppt"
+                desc = "إنشاء وتنسيق عرض تقديمي متكامل بصيغة PowerPoint (.pptx)"
+            elif any(k in goal.lower() for k in ["اكسل", "إكسل", "excel", "xlsx", "csv", "spreadsheet", "financial_model", "معادلة"]):
+                intent = "excel"
+                desc = "بناء نموذج مالي ومصنف بيانات بصيغة Excel (.xlsx)"
+            else:
+                intent = "word"
+                desc = "تأليف وتنسيق مستند رسمي متكامل بصيغة Microsoft Word (.docx)"
+
+            steps.append(Step(
+                step_id=1,
+                lane="office",
+                intent=intent,
+                target=Target(kind="office_suite", ref=goal),
+                value=goal,
+                expected_postconditions=[{"type": "office_document_generated"}],
+                risk_level="low",
+                description=desc
             ))
 
         # 1. Coding Lane Plan

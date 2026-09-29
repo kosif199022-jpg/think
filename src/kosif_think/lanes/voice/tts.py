@@ -69,3 +69,12 @@ class VoiceSynthesizer:
             "characters": len(text),
             "duration_ms": duration_ms
         }
+
+    def synthesize(self, text: str, play_sound: bool = True) -> Dict[str, Any]:
+        """Synthesizes voice audio payload and optionally plays it."""
+        if play_sound:
+            res = self.speak(text, async_mode=True)
+        else:
+            res = {"status": "synthesized", "text": text, "latency_ms": 10.0}
+        res["audio_bytes_length"] = len(text) * 32
+        return res

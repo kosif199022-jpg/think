@@ -133,6 +133,73 @@ TOOLS_DEFINITION = [
             },
             "required": ["text"]
         }
+    },
+    {
+        "name": "think_mobile_action",
+        "description": "Controls Android (ADB) and iOS smartphones: tap, swipe, launch app, dial call, send SMS, or dump UI elements.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "intent": {"type": "string", "enum": ["tap", "swipe", "launch_app", "dial", "sms", "locate", "home", "back", "type"]},
+                "target": {"type": "string", "description": "Target app, phone number, or search query."},
+                "value": {"type": "string", "description": "Value or coordinates, e.g. '500,800' or message text."},
+                "platform": {"type": "string", "enum": ["android", "ios", "auto"]}
+            },
+            "required": ["intent"]
+        }
+    },
+    {
+        "name": "think_telephony_call",
+        "description": "Dispatches phone calls, VoIP/SIP connections, Google Meet/Zoom room links, IVR flows, or Astra live conversational sessions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "intent": {"type": "string", "enum": ["dial", "hangup", "meeting", "astra_session", "ivr"]},
+                "target": {"type": "string", "description": "Phone number or meeting topic."},
+                "value": {"type": "string", "description": "Message, prompt, or meeting parameters."}
+            },
+            "required": ["intent"]
+        }
+    },
+    {
+        "name": "think_scientific_research",
+        "description": "Searches ArXiv/PubMed academic papers, synthesizes literature reviews, compiles LaTeX documents, or validates statistical p-values.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "intent": {"type": "string", "enum": ["search", "review", "latex", "bibtex", "stats"]},
+                "target": {"type": "string", "description": "Search topic, paper title, or DOI."},
+                "value": {"type": "string", "description": "Topic or abstract input."}
+            },
+            "required": ["intent"]
+        }
+    },
+    {
+        "name": "think_office_generate",
+        "description": "Autonomously generates Microsoft Word (.docx), PowerPoint (.pptx & HTML presentations), and Excel (.xlsx, CSV, financial models, formulas).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "intent": {"type": "string", "enum": ["word", "ppt", "excel", "formula"]},
+                "filename": {"type": "string", "description": "Target filename (.docx, .pptx, or .xlsx)."},
+                "title": {"type": "string", "description": "Document or presentation title."},
+                "value": {"type": "string", "description": "Markdown body, slide content, or formula string."}
+            },
+            "required": ["intent"]
+        }
+    },
+    {
+        "name": "think_open_models_inference",
+        "description": "Executes inference via open-source flagship models (DeepSeek-R1, Qwen 2.5 Coder, Llama 3.3, Ollama).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "prompt": {"type": "string", "description": "Instruction or reasoning challenge."},
+                "model": {"type": "string", "enum": ["deepseek-r1", "deepseek-r1-distill-qwen-32b", "qwen-2.5-coder-32b", "llama-3.3-70b", "phi-4", "ui-tars-7b"]},
+                "system_instruction": {"type": "string", "description": "System role prompt."}
+            },
+            "required": ["prompt"]
+        }
     }
 ]
 
@@ -224,6 +291,49 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> Dict[str, An
         scan = guard.scan_prompt(text)
         cleaned, pii_count = guard.redact_pii(text)
         return {"scan": scan, "redacted_pii_count": pii_count, "cleaned_text": cleaned}
+    elif name == "think_mobile_action":
+        handler = executor._lane_handlers.get("mobile")
+        if handler:
+            from ..core.planner import Step
+            intent = arguments.get("intent", "observe")
+            val = arguments.get("value")
+            target = arguments.get("target")
+            return await handler.dispatch_step(Step(step_id=1, lane="mobile", intent=intent, value=val, target=type("T", (), {"ref": target})(), args=arguments))
+        return {"error": "Mobile lane not available"}
+    elif name == "think_telephony_call":
+        handler = executor._lane_handlers.get("telephony")
+        if handler:
+            from ..core.planner import Step
+            intent = arguments.get("intent", "dial")
+            val = arguments.get("value")
+            target = arguments.get("target")
+            return await handler.dispatch_step(Step(step_id=1, lane="telephony", intent=intent, value=val, target=type("T", (), {"ref": target})(), args=arguments))
+        return {"error": "Telephony lane not available"}
+    elif name == "think_scientific_research":
+        handler = executor._lane_handlers.get("research")
+        if handler:
+            from ..core.planner import Step
+            intent = arguments.get("intent", "search")
+            val = arguments.get("value")
+            target = arguments.get("target")
+            return await handler.dispatch_step(Step(step_id=1, lane="research", intent=intent, value=val, target=type("T", (), {"ref": target})(), args=arguments))
+        return {"error": "Research lane not available"}
+    elif name == "think_office_generate":
+        handler = executor._lane_handlers.get("office")
+        if handler:
+            from ..core.planner import Step
+            intent = arguments.get("intent", "word")
+            val = arguments.get("value")
+            target = arguments.get("filename")
+            return await handler.dispatch_step(Step(step_id=1, lane="office", intent=intent, value=val, target=type("T", (), {"ref": target})(), args=arguments))
+        return {"error": "Office lane not available"}
+    elif name == "think_open_models_inference":
+        from ..connectors.open_source_engine import OpenSourceEngine
+        engine = OpenSourceEngine()
+        prompt = arguments.get("prompt", "")
+        model_id = arguments.get("model", "deepseek-r1")
+        system_inst = arguments.get("system_instruction")
+        return engine.run_inference(prompt, model_id=model_id, system_instruction=system_inst)
     return {"error": f"Unknown tool: {name}"}
 
 async def run_mcp_stdio():

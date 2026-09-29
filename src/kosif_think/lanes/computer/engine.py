@@ -1,6 +1,6 @@
 """
 Computer Lane Engine: Dispatches desktop application launches, UI automation,
-file operations, and screen state queries.
+process lifecycle, keystrokes, clipboard, file operations, and screen state queries.
 """
 
 from typing import Dict, Any, Optional
@@ -26,32 +26,70 @@ class ComputerLane:
             cancellation_token.throw_if_cancellation_requested()
 
         t0 = time.perf_counter()
-        intent = getattr(step, "intent", "observe")
+        intent = str(getattr(step, "intent", "observe")).lower()
+        target_ref = getattr(getattr(step, "target", None), "ref", "") or ""
+        val = getattr(step, "value", None)
+        args = getattr(step, "args", {}) or {}
 
-        if intent == "launch_app":
-            app_target = getattr(getattr(step, "target", None), "ref", "notepad.exe") or "notepad.exe"
-            res = self.apps.launch_app(app_target)
+        if intent in ("launch_app", "open_app", "run_app"):
+            app_target = target_ref or str(val or "notepad.exe")
+            res = self.apps.launch_app(app_target, args.get("args"))
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        elif intent in ("close_app", "terminate_app", "kill_app"):
+            app_target = target_ref or str(val or "")
+            res = self.apps.terminate_app(app_target)
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        elif intent in ("list_apps", "running_apps", "ps"):
+            apps = self.apps.list_running_apps()
+            return {"status": "ok", "apps": apps, "count": len(apps), "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
+
+        elif intent in ("focus", "focus_window"):
+            target = target_ref or str(val or "")
+            res = self.apps.focus_window(target)
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        elif intent in ("send_keys", "type", "press_keys"):
+            keys = str(val or target_ref or "")
+            window = args.get("window")
+            res = self.apps.send_keys(keys, window)
+            res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+            return res
+
+        elif intent in ("clipboard_get", "get_clipboard"):
+            clip_text = self.apps.get_clipboard_text()
+            return {"status": "ok", "clipboard": clip_text, "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
+
+        elif intent in ("clipboard_set", "set_clipboard"):
+            text = str(val or target_ref or "")
+            ok = self.apps.set_clipboard_text(text)
+            return {"status": "ok" if ok else "error", "copied": ok, "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
+
+        elif intent in ("screenshot", "capture_screen"):
+            out_path = target_ref or str(val or "desktop_screenshot.png")
+            res = self.apps.take_screenshot(out_path)
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res
 
         elif intent == "read_file":
-            path_target = getattr(getattr(step, "target", None), "ref", "")
-            return self.files.read_text(path_target)
+            return self.files.read_text(target_ref)
 
         elif intent == "write_file":
-            path_target = getattr(getattr(step, "target", None), "ref", "")
-            content = str(getattr(step, "value", ""))
-            return self.files.write_text(path_target, content)
+            content = str(val or "")
+            return self.files.write_text(target_ref, content)
 
         elif intent in ("ground", "locate", "find_element", "click_element"):
-            instruction = str(getattr(step, "value", "") or getattr(step, "description", ""))
+            instruction = str(val or getattr(step, "description", ""))
             res = self.grounding.ground_element(instruction)
             res["lane"] = "computer"
             res["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return res
 
         else:
-            # Screen inspection
             state = self.screen.get_state()
             state["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
             return state

@@ -20,14 +20,19 @@ from ..lanes.browser import BrowserLane
 from ..lanes.whatsapp import WhatsAppLane
 from ..lanes.ios import IOSLane
 from ..lanes.voice import VoiceLane
+from ..lanes.mobile import MobileLane
+from ..lanes.telephony import TelephonyLane
+from ..lanes.research import ResearchLane
+from ..lanes.office import OfficeLane
 from ..lanes.browser.cloud_view import render_cloud_browser_html
 from ..connectors.openai_bridge import OpenAIBridge
 from ..connectors.app_hub import AppHub
+from ..connectors.open_source_engine import OpenSourceEngine
 from ..core.cancellation import CancellationSource
 
 logger = logging.getLogger("kosif_think.server")
 
-# Global singleton executor with all 8 lanes registered
+# Global singleton executor with all 12 lanes registered
 executor = ThinkExecutor()
 executor.register_lane("reasoning", ReasoningLane())
 executor.register_lane("coding", CodingLane())
@@ -37,10 +42,15 @@ executor.register_lane("browser", BrowserLane())
 executor.register_lane("whatsapp", WhatsAppLane())
 executor.register_lane("ios", IOSLane())
 executor.register_lane("voice", VoiceLane())
+executor.register_lane("mobile", MobileLane())
+executor.register_lane("telephony", TelephonyLane())
+executor.register_lane("research", ResearchLane())
+executor.register_lane("office", OfficeLane())
 
 # Connectors
 openai_bridge = OpenAIBridge(executor)
 app_hub = AppHub()
+open_models_engine = OpenSourceEngine()
 
 class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
     """Handles REST and OpenAI-compatible API requests for KOSIF Think."""
@@ -135,14 +145,19 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             b_lane: BrowserLane = executor._lane_handlers["browser"]
             self._send_json(200, b_lane.jev_cloud.get_cloud_state("default"))
 
-        # Thought Map View (Interactive HTML5 Canvas)
-        elif path.startswith("/api/think/thought-map") and path.endswith("/view"):
-            qs = parse_qs(parsed.query)
-            goal = qs.get("goal", ["Autonomous Super-Intelligence Architecture"])[0]
-            from ..lanes.reasoning.thought_map import CognitiveThoughtMap
-            tmap = CognitiveThoughtMap()
-            tmap.build_from_goal(goal)
-            self._send_html(200, tmap.to_interactive_html())
+        # Open-Source Models Catalog
+        elif path in ("/api/open-models/catalog", "/api/v1/open_models"):
+            self._send_json(200, {"ok": True, "models": open_models_engine.list_models()})
+
+        # Mobile Device Information
+        elif path == "/api/mobile/info":
+            m_lane: MobileLane = executor._lane_handlers["mobile"]
+            self._send_json(200, {"ok": True, "info": m_lane.android.get_device_info()})
+
+        # Telephony History
+        elif path == "/api/telephony/history":
+            t_lane: TelephonyLane = executor._lane_handlers["telephony"]
+            self._send_json(200, {"ok": True, "calls": t_lane.call_manager.call_history})
 
         else:
             self._send_json(404, {"ok": False, "error": "Endpoint not found"})
@@ -278,6 +293,54 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
                     } for s in plan.steps
                 ]
             })
+
+        # Open-Source Models Inference
+        elif path in ("/api/open-models/run", "/api/v1/open_models/run"):
+            prompt = payload.get("prompt", "")
+            model_id = payload.get("model", "deepseek-r1")
+            system_inst = payload.get("system_instruction")
+            res = open_models_engine.run_inference(prompt, model_id=model_id, system_instruction=system_inst)
+            self._send_json(200, res)
+
+        # Mobile Control Action
+        elif path == "/api/mobile/action":
+            m_lane: MobileLane = executor._lane_handlers["mobile"]
+            from ..core.planner import Step
+            intent = payload.get("intent", "observe")
+            val = payload.get("value")
+            step = Step(step_id=1, lane="mobile", intent=intent, value=val, args=payload)
+            res = asyncio.run(m_lane.dispatch_step(step))
+            self._send_json(200, res)
+
+        # Telephony & Call Action
+        elif path == "/api/telephony/action":
+            t_lane: TelephonyLane = executor._lane_handlers["telephony"]
+            from ..core.planner import Step
+            intent = payload.get("intent", "dial")
+            val = payload.get("value")
+            step = Step(step_id=1, lane="telephony", intent=intent, value=val, args=payload)
+            res = asyncio.run(t_lane.dispatch_step(step))
+            self._send_json(200, res)
+
+        # Research & Academic Search / Review
+        elif path == "/api/research/action":
+            r_lane: ResearchLane = executor._lane_handlers["research"]
+            from ..core.planner import Step
+            intent = payload.get("intent", "search")
+            val = payload.get("value")
+            step = Step(step_id=1, lane="research", intent=intent, value=val, args=payload)
+            res = asyncio.run(r_lane.dispatch_step(step))
+            self._send_json(200, res)
+
+        # Office Suite Action (Word / PowerPoint / Excel)
+        elif path == "/api/office/action":
+            o_lane: OfficeLane = executor._lane_handlers["office"]
+            from ..core.planner import Step
+            intent = payload.get("intent", "word")
+            val = payload.get("value")
+            step = Step(step_id=1, lane="office", intent=intent, value=val, args=payload)
+            res = asyncio.run(o_lane.dispatch_step(step))
+            self._send_json(200, res)
 
         else:
             self._send_json(404, {"ok": False, "error": "Endpoint not found"})

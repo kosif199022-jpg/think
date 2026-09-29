@@ -34,6 +34,11 @@ from .lanes.browser import BrowserLane
 from .lanes.whatsapp import WhatsAppLane
 from .lanes.ios import IOSLane
 from .lanes.voice import VoiceLane
+from .lanes.mobile import MobileLane
+from .lanes.telephony import TelephonyLane
+from .lanes.research import ResearchLane
+from .lanes.office import OfficeLane
+from .connectors.open_source_engine import OpenSourceEngine
 from .server.api import run_server
 from .server.mcp import run_mcp_stdio
 from .config import DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
@@ -48,6 +53,10 @@ def setup_executor() -> ThinkExecutor:
     ex.register_lane("whatsapp", WhatsAppLane())
     ex.register_lane("ios", IOSLane())
     ex.register_lane("voice", VoiceLane())
+    ex.register_lane("mobile", MobileLane())
+    ex.register_lane("telephony", TelephonyLane())
+    ex.register_lane("research", ResearchLane())
+    ex.register_lane("office", OfficeLane())
     return ex
 
 def main(args: Optional[List[str]] = None):
@@ -195,6 +204,37 @@ def main(args: Optional[List[str]] = None):
 
     # Command: mcp
     subparsers.add_parser("mcp", help="Run Model Context Protocol (MCP) stdio server")
+
+    # Command: mobile
+    p_mobile = subparsers.add_parser("mobile", help="Control Android & iOS smartphone devices")
+    p_mobile.add_argument("action", choices=["tap", "swipe", "app", "dial", "sms", "locate", "home", "back", "type", "info"], help="Mobile action")
+    p_mobile.add_argument("value", nargs="?", default="", help="Coordinates (x,y), package name, phone number, or text")
+    p_mobile.add_argument("--platform", choices=["android", "ios", "auto"], default="auto")
+
+    # Command: call
+    p_call = subparsers.add_parser("call", help="Telephony, voice calls, virtual meetings, and Astra voice sessions")
+    p_call.add_argument("action", choices=["dial", "hangup", "meeting", "astra", "ivr"], help="Telephony action")
+    p_call.add_argument("value", nargs="?", default="", help="Phone number, meeting topic, or speech prompt")
+    p_call.add_argument("--provider", default="cellular", choices=["cellular", "sip", "twilio"])
+
+    # Command: research
+    p_res = subparsers.add_parser("research", help="Scientific literature search, reviews, LaTeX, citations, and statistics")
+    p_res.add_argument("action", choices=["search", "review", "latex", "bibtex", "stats"], help="Research action")
+    p_res.add_argument("value", nargs="?", default="", help="Paper topic, title, or formula")
+    p_res.add_argument("--limit", type=int, default=5, help="Maximum papers to retrieve")
+
+    # Command: office
+    p_off = subparsers.add_parser("office", help="Autonomous Microsoft Word (.docx), PowerPoint (.pptx), and Excel (.xlsx) suite")
+    p_off.add_argument("action", choices=["word", "ppt", "excel", "formula", "model"], help="Office document action")
+    p_off.add_argument("target", nargs="?", default="", help="Output filename or formula")
+    p_off.add_argument("--title", default="Executive Report", help="Document or presentation title")
+    p_off.add_argument("--value", default="", help="Markdown body or specific data input")
+
+    # Command: open-models
+    p_om = subparsers.add_parser("open-models", help="Open-source AI models hub (DeepSeek-R1, Qwen 2.5, Llama 3.3, Ollama)")
+    p_om.add_argument("action", choices=["list", "run", "benchmark", "status"], help="Open-source models action")
+    p_om.add_argument("prompt", nargs="?", default="", help="Inference prompt or query")
+    p_om.add_argument("--model", default="deepseek-r1", help="Target model identifier")
 
     parsed = parser.parse_args(args)
 
@@ -616,9 +656,89 @@ def main(args: Optional[List[str]] = None):
             for step in res["critical_path"]:
                 print(f"  ➜ [{step['category'].upper()}] {step['label']} ({int(step['belief']*100)}% belief)")
 
+    elif parsed.command == "mobile":
+        m_lane: MobileLane = executor._lane_handlers["mobile"]
+        from .core.planner import Step
+        intent_map = {"app": "launch_app", "tap": "tap", "swipe": "swipe", "dial": "dial", "sms": "sms", "locate": "locate", "home": "home", "back": "back", "type": "type", "info": "info"}
+        intent = intent_map.get(parsed.action, parsed.action)
+        step = Step(step_id=1, lane="mobile", intent=intent, value=parsed.value, args={"platform": parsed.platform})
+        res = asyncio.run(m_lane.dispatch_step(step))
+        print("=" * 60)
+        print(f"📱 Mobile Lane Action: [{parsed.action.upper()}] ({parsed.platform})")
+        print("=" * 60)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "call":
+        t_lane: TelephonyLane = executor._lane_handlers["telephony"]
+        from .core.planner import Step
+        intent_map = {"dial": "dial", "hangup": "hangup", "meeting": "meeting", "astra": "astra_session", "ivr": "ivr"}
+        intent = intent_map.get(parsed.action, parsed.action)
+        step = Step(step_id=1, lane="telephony", intent=intent, value=parsed.value, args={"provider": parsed.provider})
+        res = asyncio.run(t_lane.dispatch_step(step))
+        print("=" * 60)
+        print(f"📞 Telephony Lane Result: [{parsed.action.upper()}]")
+        print("=" * 60)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "research":
+        r_lane: ResearchLane = executor._lane_handlers["research"]
+        from .core.planner import Step
+        intent = parsed.action
+        step = Step(step_id=1, lane="research", intent=intent, value=parsed.value, args={"limit": parsed.limit})
+        res = asyncio.run(r_lane.dispatch_step(step))
+        print("=" * 60)
+        print(f"🔬 Scientific Research Lane: [{parsed.action.upper()}]")
+        print("=" * 60)
+        if parsed.action == "review":
+            print(res.get("markdown_review", json.dumps(res, ensure_ascii=False, indent=2)))
+        elif parsed.action == "latex":
+            print(res.get("latex_code", ""))
+        else:
+            print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "office":
+        o_lane: OfficeLane = executor._lane_handlers["office"]
+        from .core.planner import Step
+        intent_map = {"word": "word", "ppt": "ppt", "excel": "excel", "formula": "formula", "model": "excel"}
+        intent = intent_map.get(parsed.action, parsed.action)
+        step = Step(step_id=1, lane="office", intent=intent, target=type("T", (), {"ref": parsed.target})(), value=parsed.value, args={"title": parsed.title})
+        res = asyncio.run(o_lane.dispatch_step(step))
+        print("=" * 60)
+        print(f"📄 Office Suite Lane: [{parsed.action.upper()}]")
+        print("=" * 60)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+
+    elif parsed.command == "open-models":
+        engine = OpenSourceEngine()
+        print("=" * 60)
+        print(f"🌐 Open-Source AI Models Hub: [{parsed.action.upper()}]")
+        print("=" * 60)
+        if parsed.action == "list":
+            for m in engine.list_models():
+                print(f"  • {m['name']} ({m['family']} {m['parameters']}) - Domain: {m['domain']}")
+                print(f"    Benchmarks: {m['benchmarks']}")
+        elif parsed.action == "status":
+            st = engine.check_ollama_status()
+            print(f"Local Ollama Status: {'🟢 ONLINE' if st.get('online') else '🔴 OFFLINE'}")
+            print(f"Base URL: {st.get('base_url')}")
+            if st.get('installed_models'):
+                print(f"Installed Models: {', '.join(st['installed_models'])}")
+        elif parsed.action == "benchmark":
+            print(f"{'Model':<30} | {'Domain':<20} | {'Benchmarks'}")
+            print("-" * 75)
+            for m in engine.list_models():
+                bm = ", ".join([f"{k}: {v}" for k, v in m['benchmarks'].items()])
+                print(f"{m['name']:<30} | {m['domain']:<20} | {bm}")
+        else:
+            res = engine.run_inference(parsed.prompt or "Analyze distributed agentic consensus", model_id=parsed.model)
+            print(f"Engine: {res['engine']} | Model: {res['model']} | Latency: {res['duration_ms']}ms")
+            if res.get("think_buffer"):
+                print("\n<think>\n" + res["think_buffer"] + "\n</think>\n")
+            print(res["response"])
+
     elif parsed.command == "status":
         print("=" * 60)
-        print("🌐 KOSIF Think Platform Health (8 Autonomous Lanes)")
+        print("🌐 KOSIF Think Platform Health (12 Autonomous Lanes)")
         print("=" * 60)
         for lane, metrics in executor.router._lane_health.items():
             st = "🟢 Active" if metrics.get("available") and not metrics.get("circuit_open") else "🔴 Degraded"
