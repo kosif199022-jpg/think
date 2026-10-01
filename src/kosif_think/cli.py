@@ -23,7 +23,7 @@ import argparse
 import asyncio
 import json
 import sys
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from .core.executor import ThinkExecutor
 from .lanes.reasoning import ReasoningLane
@@ -58,6 +58,47 @@ def setup_executor() -> ThinkExecutor:
     ex.register_lane("research", ResearchLane())
     ex.register_lane("office", OfficeLane())
     return ex
+
+def run_reason(parsed: Any) -> int:
+    """``think reason``: runs one strategy against the model configured in the environment."""
+    from .connectors.models import ModelError, resolve_default_client
+    from .lanes.reasoning import strategies as st
+    try:
+        client = resolve_default_client()
+    except ModelError as ex:
+        print(f"❌ {ex}")
+        return 2
+    if client is None:
+        print("❌ No model configured. Set ANTHROPIC_API_KEY (pip install 'kosif-think[claude]'), "
+              "OLLAMA_HOST, or KOSIF_OPENAI_BASE_URL + KOSIF_OPENAI_MODEL.")
+        return 2
+    q = parsed.question
+    try:
+        if parsed.strategy == "self-consistency":
+            res = st.self_consistency(client, q, samples=parsed.samples)
+        elif parsed.strategy == "cove":
+            res = st.chain_of_verification(client, q)
+        elif parsed.strategy == "self-refine":
+            res = st.self_refine(client, q, max_iterations=parsed.rounds)
+        elif parsed.strategy == "tot":
+            res = st.tree_of_thoughts(client, q)
+        elif parsed.strategy == "debate":
+            res = st.multi_agent_debate([client] * max(2, parsed.samples), q, rounds=parsed.rounds)
+        elif parsed.strategy == "least-to-most":
+            res = st.least_to_most(client, q)
+        else:
+            if not parsed.check:
+                print("❌ reflexion needs --check TEXT (the evaluator the attempts must pass).")
+                return 2
+            res = st.reflexion(client, q, evaluator=lambda a: (parsed.check in a, f"The answer must contain: {parsed.check}"),
+                               max_trials=parsed.rounds)
+    except ModelError as ex:
+        print(f"❌ {ex}")
+        return 1
+    res.pop("calls", None)
+    print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
+    return 0
+
 
 def main(args: Optional[List[str]] = None):
     # Ensure UTF-8 output on Windows
@@ -245,7 +286,19 @@ def main(args: Optional[List[str]] = None):
     p_om.add_argument("prompt", nargs="?", default="", help="Inference prompt or query")
     p_om.add_argument("--model", default="deepseek-r1", help="Target model identifier")
 
+    # Command: reason (model-backed strategies)
+    p_reason = subparsers.add_parser("reason", help="Run a model-backed reasoning strategy (needs a configured model)")
+    p_reason.add_argument("strategy", choices=["self-consistency", "cove", "self-refine", "tot", "debate",
+                                               "least-to-most", "reflexion"], help="Strategy from the published papers")
+    p_reason.add_argument("question", help="Question, problem or task")
+    p_reason.add_argument("--samples", type=int, default=5, help="Self-consistency samples / debate agents")
+    p_reason.add_argument("--rounds", type=int, default=2, help="Debate rounds, refine iterations or reflexion trials")
+    p_reason.add_argument("--check", default="", help="Reflexion: a substring the answer must contain to pass")
+
     parsed = parser.parse_args(args)
+
+    if parsed.command == "reason":
+        sys.exit(run_reason(parsed))
 
     if not parsed.command:
         parser.print_help()

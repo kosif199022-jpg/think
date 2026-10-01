@@ -3,7 +3,8 @@ Self-Consistency & Majority Voting Reasoning Engine for KOSIF Think.
 Inspired by Google DeepMind (Wang et al. 2022).
 Generates diverse reasoning rollouts across independent perspectives,
 clusters conclusions, and selects the majority-consensus solution with entropy metrics.
-Zero external dependencies. Pure Python.
+With a model client the samples are real chains of thought (see ``strategies.self_consistency``); without one
+the rollouts are fixed perspective templates and the result is marked ``simulated: True``.
 """
 
 from typing import Dict, Any, List, Optional
@@ -32,6 +33,9 @@ class ReasoningPath:
 
 class SelfConsistencyEngine:
     """Samples multiple diverse reasoning trajectories and votes on majority consensus."""
+
+    def __init__(self, client: Optional[Any] = None):
+        self.client = client
 
     PERSPECTIVES = [
         "Analytical & First-Principles",
@@ -85,6 +89,12 @@ class SelfConsistencyEngine:
 
     def evaluate_consensus(self, problem: str, num_samples: int = 5) -> Dict[str, Any]:
         """Executes self-consistency voting and returns the winning consensus."""
+        if self.client is not None:
+            from .strategies import self_consistency
+            res = self_consistency(self.client, problem, samples=num_samples)
+            res.update({"problem": problem, "total_samples": num_samples, "majority_conclusion": res["answer"],
+                        "vote_distribution": res["votes"]})
+            return res
         t0 = time.perf_counter()
         rollouts = self.sample_rollouts(problem, count=num_samples)
 
@@ -101,6 +111,7 @@ class SelfConsistencyEngine:
 
         return {
             "mode": "self_consistency",
+            "simulated": True,
             "problem": problem,
             "total_samples": total_votes,
             "majority_conclusion": majority_conclusion,

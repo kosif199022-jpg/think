@@ -26,25 +26,36 @@ from .symbolic_verifier import SymbolicVerifier
 from .thought_map import CognitiveThoughtMap
 from .code_agent import CodeAgentInterpreter
 from .rlvr_reasoner import RLVRReasoner
+from .strategies import least_to_most, multi_agent_debate, self_refine
+from ...connectors.models import ModelClient, ModelError, resolve_default_client
 from ...core.cancellation import CancellationToken
 
 class ReasoningLane:
     """Unified handler for all super-intelligent reasoning models."""
 
-    def __init__(self):
+    def __init__(self, client: Optional[ModelClient] = None, use_env_client: bool = True):
+        """``client`` is the model the reasoning modes call. Without one, the client configured in the
+        environment is used (see ``resolve_default_client``); with none there, modes fall back to their
+        built-in templates and mark results ``simulated``."""
+        if client is None and use_env_client:
+            try:
+                client = resolve_default_client()
+            except ModelError:
+                client = None
+        self.client = client
         self.council = CouncilReasoning()
         self.cognitive = CognitiveUnderstanding()
-        self.tot = TreeOfThoughts()
+        self.tot = TreeOfThoughts(client=client)
         self.got = GraphOfThoughts()
         self.reflexion = ReflexionEngine()
         self.mcts = MCTSPlanner()
         self.dspy = DSPyOptimizer()
         self.agent_graph = MultiAgentGraph()
         self.repo_intel = RepoIntelligence()
-        self.cove = ChainOfVerification()
+        self.cove = ChainOfVerification(client=client)
         self.coala = CoALAMemorySystem()
         self.tournament = TournamentVerifier()
-        self.self_consistency = SelfConsistencyEngine()
+        self.self_consistency = SelfConsistencyEngine(client=client)
         self.react = ReActEngine()
         self.rag = AgenticRAGEngine()
         self.deep_think = DeepThinkingEngine()
@@ -61,6 +72,29 @@ class ReasoningLane:
         t0 = time.perf_counter()
         intent = str(getattr(step, "intent", "council_evaluate")).lower()
         goal = str(getattr(step, "value", "") or getattr(step, "description", ""))
+
+        # Model-only strategies: debate, self-refine, least-to-most (no template fallback).
+        model_only = {"debate": "multi_agent_debate", "multi_agent_debate": "multi_agent_debate",
+                      "self_refine": "self_refine", "least_to_most": "least_to_most"}
+        if intent in model_only:
+            mode = model_only[intent]
+            if self.client is None:
+                return {"status": "error", "lane": "reasoning", "mode": mode, "changed": False,
+                        "error": "No model configured. Set ANTHROPIC_API_KEY, OLLAMA_HOST or KOSIF_OPENAI_BASE_URL.",
+                        "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
+            try:
+                if mode == "multi_agent_debate":
+                    res = multi_agent_debate([self.client] * 3, goal)
+                elif mode == "self_refine":
+                    res = self_refine(self.client, goal)
+                else:
+                    res = least_to_most(self.client, goal)
+            except ModelError as ex:
+                return {"status": "error", "lane": "reasoning", "mode": mode, "changed": False, "error": str(ex),
+                        "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
+            res.update({"status": "ok", "lane": "reasoning", "changed": True,
+                        "latency_ms": round((time.perf_counter() - t0) * 1000, 2)})
+            return res
 
         # 1. Tree of Thoughts Mode
         if "tot" in intent or "tree" in intent:

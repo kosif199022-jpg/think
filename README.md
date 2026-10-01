@@ -125,6 +125,48 @@ KOSIF Think systematically reviews and embeds architectural principles from fron
 
 ---
 
+## 🧠 Model-Backed Reasoning Strategies (`lanes/reasoning/strategies.py`)
+
+The reasoning modes call a real model when one is configured, and say so when not: results from the built-in
+templates carry `simulated: true`, and `LLMRouter` marks placeholder completions the same way.
+
+| Strategy | Paper | What the code does |
+|---|---|---|
+| `self_consistency` | Wang et al., 2022 | Samples N chains of thought, extracts each `Answer:`, majority vote with consensus ratio and entropy |
+| `chain_of_verification` | Dhuliawala et al. (Meta), 2023 | Draft, plan fact-check questions, answer them **without** the draft (factored), revise |
+| `self_refine` | Madaan et al., 2023 | Output, self-feedback, rewrite until the feedback reports no issues |
+| `reflexion` | Shinn et al., 2023 | Attempt, external evaluator (tests/checker), verbal reflection kept in memory, retry |
+| `tree_of_thoughts` | Yao et al. (Princeton), 2023 | BFS: propose k next steps, value each path sure/likely/impossible, keep the best beam |
+| `multi_agent_debate` | Du et al., 2023 | Several agents answer, read each other's answers for R rounds, majority final answer |
+| `least_to_most` | Zhou et al., 2022 | Decompose into ordered subproblems, solve each with earlier answers in context |
+
+Model clients (`connectors/models.py`), chosen from the environment:
+
+| Variable | Client |
+|---|---|
+| `ANTHROPIC_API_KEY` (+ optional `KOSIF_CLAUDE_MODEL`, default `claude-opus-5`) | Claude via the official SDK: `pip install 'kosif-think[claude]'` |
+| `OLLAMA_HOST` (+ `KOSIF_OLLAMA_MODEL`) | Local Ollama, no cost |
+| `KOSIF_OPENAI_BASE_URL` + `KOSIF_OPENAI_MODEL` (+ `KOSIF_OPENAI_API_KEY`) | Any `/v1/chat/completions` server: DeepSeek, OpenRouter, vLLM, LM Studio |
+| `KOSIF_MODEL_PROVIDER` | Forces one of `anthropic`, `ollama`, `openai_compatible` |
+
+```bash
+think reason self-consistency "A bat and a ball cost 1.10 in total. The bat costs 1.00 more than the ball. How much is the ball?"
+think reason cove "Name three politicians born in Boston"
+think reason debate "What is 17 * 24 - 13?" --samples 3 --rounds 2
+think reason tot "Use 4 9 10 13 and + - * / to make 24"
+think reason reflexion "Write a Python one-liner that reverses a string s" --check "[::-1]"
+```
+
+```python
+from kosif_think.connectors.models import AnthropicClient
+from kosif_think.lanes.reasoning import strategies
+
+res = strategies.self_consistency(AnthropicClient(), "How many primes are below 50?", samples=5)
+print(res["answer"], res["consensus_ratio"], res["usage"])
+```
+
+---
+
 ## ⚡ Unified CLI Commands
 
 ```bash

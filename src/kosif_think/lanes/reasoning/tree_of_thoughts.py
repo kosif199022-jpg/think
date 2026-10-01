@@ -32,7 +32,9 @@ class ThoughtNode:
 class TreeOfThoughts:
     """Explores problem spaces via branched tree search, evaluation, and pruning."""
 
-    def __init__(self, branching_factor: int = 3, max_depth: int = 3, prune_threshold: float = 0.4):
+    def __init__(self, branching_factor: int = 3, max_depth: int = 3, prune_threshold: float = 0.4,
+                 client: Optional[Any] = None):
+        self.client = client
         self.branching_factor = branching_factor
         self.max_depth = max_depth
         self.prune_threshold = prune_threshold
@@ -43,7 +45,16 @@ class TreeOfThoughts:
         generator_fn: Optional[Callable[[str, int], List[str]]] = None,
         evaluator_fn: Optional[Callable[[str, List[str]], float]] = None
     ) -> Dict[str, Any]:
-        """Runs a tree-of-thoughts search to find the optimal path to solve a problem."""
+        """Runs a tree-of-thoughts search to find the optimal path to solve a problem.
+
+        With a model client and no custom generator/evaluator this is the propose/value BFS of Yao et al.
+        (see ``strategies.tree_of_thoughts``). Otherwise the given or built-in template functions are used.
+        """
+        if self.client is not None and generator_fn is None and evaluator_fn is None:
+            from .strategies import tree_of_thoughts
+            return tree_of_thoughts(self.client, problem, breadth=self.branching_factor, depth=self.max_depth,
+                                    beam=self.branching_factor)
+        simulated = generator_fn is None
         t0 = time.perf_counter()
         root = ThoughtNode(thought_id="root", text=f"Problem: {problem}", depth=0, score=1.0)
 
@@ -124,6 +135,7 @@ class TreeOfThoughts:
 
         return {
             "mode": "tree_of_thoughts",
+            "simulated": simulated,
             "problem": problem,
             "best_score": round(best_score, 3),
             "total_thoughts_explored": total_nodes,

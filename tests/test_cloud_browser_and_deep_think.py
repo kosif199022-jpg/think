@@ -242,7 +242,9 @@ class TestCognitiveSupremacy(unittest.TestCase):
         self.assertIn("<prosody", ssml)
 
         speak_res = tts.speak("System initialized in test harness.", async_mode=True)
-        self.assertIn(speak_res["status"], ["dispatched_async", "completed_sync"])
+        # speech needs an engine on this machine; without one the honest answer is "unavailable"
+        expected = ["unavailable"] if VoiceSynthesizer.detect_engine() is None else ["dispatched_async", "completed_sync"]
+        self.assertIn(speak_res["status"], expected)
 
         stt = AudioTranscriber()
         # Test validation on dummy audio file
@@ -335,7 +337,8 @@ class TestCognitiveSupremacy(unittest.TestCase):
         v_lane = VoiceLane()
         step_voice = Step(step_id=6, lane="voice", intent="speak", value="Autonomous confirmation")
         res_voice = asyncio.run(v_lane.dispatch_step(step_voice))
-        self.assertIn(res_voice["status"], ["dispatched_async", "completed_sync"])
+        expected = ["unavailable"] if VoiceSynthesizer.detect_engine() is None else ["dispatched_async", "completed_sync"]
+        self.assertIn(res_voice["status"], expected)
 
 
 if __name__ == "__main__":
