@@ -8,6 +8,10 @@ import sys
 import asyncio
 from typing import Dict, Any, List
 from .api import executor
+from ..pro import DESCRIPTIONS as PRO_DESCRIPTIONS, TOOLS as PRO_TOOLS, run_tool as run_pro_tool
+
+REASON_STRATEGIES = ["self_consistency", "chain_of_verification", "self_refine", "tree_of_thoughts",
+                     "multi_agent_debate", "least_to_most", "council100"]
 
 TOOLS_DEFINITION = [
     {
@@ -213,6 +217,34 @@ TOOLS_DEFINITION = [
         }
     },
     {
+        "name": "think_pro_tool",
+        "description": "Deterministic KOSIF Think Pro verification tools. " + "; ".join(
+            f"{k}: {v}" for k, v in PRO_DESCRIPTIONS.items()),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "tool": {"type": "string", "enum": sorted(PRO_TOOLS)},
+                "input": {"type": "object", "description": "The tool's input object (see the tool's docstring)."}
+            },
+            "required": ["tool", "input"]
+        }
+    },
+    {
+        "name": "think_reason",
+        "description": "Model-backed reasoning strategy (self-consistency, CoVe, self-refine, ToT, debate, "
+                       "least-to-most, Council-100). Needs a configured model.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "strategy": {"type": "string", "enum": REASON_STRATEGIES},
+                "question": {"type": "string"},
+                "mode": {"type": "string", "enum": ["standard", "pro", "full"],
+                         "description": "Council-100 selection mode"}
+            },
+            "required": ["strategy", "question"]
+        }
+    },
+    {
         "name": "think_code_agent",
         "description": "Executes expressive Smolagents-style Python action scripts with pre-bound capabilities.",
         "inputSchema": {
@@ -370,6 +402,34 @@ async def handle_tool_call(name: str, arguments: Dict[str, Any]) -> Dict[str, An
             from ..core.planner import Step
             return await handler.dispatch_step(Step(step_id=1, lane="reasoning", intent="code_agent", value=code))
         return {"error": "Reasoning lane not available"}
+    elif name == "think_pro_tool":
+        try:
+            return run_pro_tool(str(arguments.get("tool", "")), arguments.get("input") or {})
+        except (KeyError, ValueError, TypeError) as ex:
+            return {"ok": False, "error": str(ex)}
+    elif name == "think_reason":
+        from ..connectors.models import ModelError
+        from ..lanes.reasoning import strategies
+        from ..pro import deliberate
+        handler = executor._lane_handlers.get("reasoning")
+        client = getattr(handler, "client", None)
+        if client is None:
+            return {"ok": False, "error": "No model configured. Set ANTHROPIC_API_KEY, OLLAMA_HOST or KOSIF_OPENAI_BASE_URL."}
+        strategy = arguments.get("strategy")
+        question = str(arguments.get("question", ""))
+        try:
+            if strategy == "council100":
+                res = deliberate(client, question, mode=arguments.get("mode", "standard"))
+            elif strategy == "multi_agent_debate":
+                res = strategies.multi_agent_debate([client] * 3, question)
+            elif strategy in strategies.STRATEGIES and strategy != "reflexion":
+                res = strategies.STRATEGIES[strategy](client, question)
+            else:
+                return {"ok": False, "error": f"Unknown strategy: {strategy}"}
+        except ModelError as ex:
+            return {"ok": False, "error": str(ex)}
+        res.pop("calls", None)
+        return res
     return {"error": f"Unknown tool: {name}"}
 
 async def run_mcp_stdio():

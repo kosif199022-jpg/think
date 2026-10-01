@@ -167,6 +167,39 @@ print(res["answer"], res["consensus_ratio"], res["usage"])
 
 ---
 
+## ✅ KOSIF Think Pro Tools (`kosif_think.pro`)
+
+Deterministic verification and decision tools ported from the KOSIF Think Pro 4.2.2 plugin. Each takes a JSON
+object and returns one; they check the internal consistency of what they are given and never prove the inputs
+true.
+
+| Tool | Checks |
+|---|---|
+| `decision` | Firm constraints first, Pareto dominance, normalized weighted ranking, smallest weight change that flips the winner |
+| `probability` | Complements, conjunction/disjunction fallacies, inclusion-exclusion, Bayes posterior vs stated (base-rate neglect) |
+| `calibration` | Certainty words (English and Arabic) against the number of independent direct observations |
+| `evidence` | Safe Decimal arithmetic, sums, percents, ratios, ranges, date order, units; quarantines answers that contradict converged evidence |
+| `council-select` / `council-aggregate` / `council-independence` | Council-100: 100 lenses in 10 chambers; evidence-weighted verdict where a blocking veto cannot be outvoted; provenance diversity |
+| `source-atlas` | SHA-256 exact duplicates get one retrieval vote, near-duplicate groups, quarantine, freshness |
+| `secrets` | Likely credentials (OpenAI, GitHub, Google, generic) with optional redaction; values are never echoed |
+| `capability` | Capability truth status from evidence: a name or a claim is not proof |
+| `dag` | Acyclicity and topological order |
+| `ledger` | Journal controls in minor units: balance, chart, period, VAT = base x rate, duplicate events, invoice-bank matching |
+
+```bash
+think pro list
+think pro decision options.json          # exit 0 pass, 1 issues found, 2 bad input
+echo '{"text": "token: ..."}' | think pro secrets
+think reason council "Should we launch the payment page this week?" --mode standard
+```
+
+Also available as `POST /api/pro/<tool>` on the HTTP server and as the `think_pro_tool` and `think_reason` MCP
+tools. `think reason council` runs Council-100 on the configured model: one frozen artifact per selected lens,
+then the evidence-weighted verdict, then a synthesis that must answer every open objection. All lenses voiced by
+one model count as one independent source.
+
+---
+
 ## ⚡ Unified CLI Commands
 
 ```bash
