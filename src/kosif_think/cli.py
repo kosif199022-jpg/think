@@ -86,6 +86,9 @@ def run_reason(parsed: Any) -> int:
             res = st.multi_agent_debate([client] * max(2, parsed.samples), q, rounds=parsed.rounds)
         elif parsed.strategy == "least-to-most":
             res = st.least_to_most(client, q)
+        elif parsed.strategy == "council":
+            from .pro import deliberate
+            res = deliberate(client, q, mode=parsed.mode)
         else:
             if not parsed.check:
                 print("❌ reflexion needs --check TEXT (the evaluator the attempts must pass).")
@@ -98,6 +101,25 @@ def run_reason(parsed: Any) -> int:
     res.pop("calls", None)
     print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
     return 0
+
+
+def run_pro(parsed: Any) -> int:
+    """``think pro <tool> [input.json]``: exit 0 when the check passes, 1 when it finds issues, 2 on bad input."""
+    from .pro import DESCRIPTIONS, run_tool
+    if parsed.tool == "list":
+        for name, text in DESCRIPTIONS.items():
+            print(f"{name:22} {text}")
+        return 0
+    try:
+        raw = sys.stdin.read() if parsed.input == "-" else open(parsed.input, encoding="utf-8").read()
+        res = run_tool(parsed.tool, json.loads(raw))
+    except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError, ArithmeticError) as ex:
+        print(json.dumps({"ok": False, "error": str(ex)}, ensure_ascii=False))
+        return 2
+    print(json.dumps(res, ensure_ascii=False, indent=2, sort_keys=True, default=str))
+    failed = res.get("ok") is False or res.get("blocked") is True or res.get("acyclic") is False \
+        or res.get("verdict") in ("revise", "escalate", "invalid") or (parsed.tool == "decision" and not res.get("winner"))
+    return 1 if failed else 0
 
 
 def main(args: Optional[List[str]] = None):
@@ -289,13 +311,25 @@ def main(args: Optional[List[str]] = None):
     # Command: reason (model-backed strategies)
     p_reason = subparsers.add_parser("reason", help="Run a model-backed reasoning strategy (needs a configured model)")
     p_reason.add_argument("strategy", choices=["self-consistency", "cove", "self-refine", "tot", "debate",
-                                               "least-to-most", "reflexion"], help="Strategy from the published papers")
+                                               "least-to-most", "reflexion", "council"],
+                          help="Strategy from the published papers, or the Council-100 deliberation")
+    p_reason.add_argument("--mode", default="standard", choices=["standard", "pro", "full"],
+                          help="Council-100 selection mode")
     p_reason.add_argument("question", help="Question, problem or task")
     p_reason.add_argument("--samples", type=int, default=5, help="Self-consistency samples / debate agents")
     p_reason.add_argument("--rounds", type=int, default=2, help="Debate rounds, refine iterations or reflexion trials")
     p_reason.add_argument("--check", default="", help="Reflexion: a substring the answer must contain to pass")
 
+    # Command: pro (deterministic KOSIF Think Pro tools)
+    from .pro import DESCRIPTIONS as PRO_DESCRIPTIONS
+    p_pro = subparsers.add_parser("pro", help="Deterministic verification tools (decision, evidence, ledger, ...)")
+    p_pro.add_argument("tool", choices=sorted(PRO_DESCRIPTIONS) + ["list"], help="Tool name, or 'list'")
+    p_pro.add_argument("input", nargs="?", default="-", help="JSON input file, or '-' for stdin")
+
     parsed = parser.parse_args(args)
+
+    if parsed.command == "pro":
+        sys.exit(run_pro(parsed))
 
     if parsed.command == "reason":
         sys.exit(run_reason(parsed))
