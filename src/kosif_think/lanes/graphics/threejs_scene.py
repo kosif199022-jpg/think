@@ -38,11 +38,13 @@ button:disabled{opacity:.4}progress{flex:1;min-width:100px}
 <div id="hint">جار تحميل Three.js...</div></div>
 <div class="controls"><button id="play" type="button" disabled>تشغيل</button>
 <button id="replay" type="button" disabled>إعادة</button>
+<button id="export" type="button" disabled>تصدير فيديو</button>
 <progress id="bar" max="100" value="0"></progress>
 <span id="clock"></span></div><p id="status" role="status"></p>
 </main><script type="module">
 const cfg=__CONFIG__, stage=document.getElementById("stage"), hint=document.getElementById("hint"),
 play=document.getElementById("play"), replay=document.getElementById("replay"),
+exportBtn=document.getElementById("export"),
 bar=document.getElementById("bar"), clock=document.getElementById("clock"),
 status=document.getElementById("status");
 stage.style.aspectRatio=cfg.width+"/"+cfg.height;
@@ -83,7 +85,7 @@ function resize(){const w=Math.max(stage.clientWidth,1),h=Math.max(stage.clientH
 renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 resize();window.addEventListener("resize",resize);
 if(typeof ResizeObserver!=="undefined")new ResizeObserver(resize).observe(stage);
-let elapsed=0,started=0,running=false,frameId=0;
+let elapsed=0,started=0,running=false,frameId=0,recording=false,recorder=null;
 function draw(t){const pct=t/cfg.duration;
 planet.rotation.y=t*.25;ring.rotation.z=.05*Math.sin(t);
 moon.position.set(9*Math.cos(t*.2),1.6*Math.sin(t*.32),-4);
@@ -93,15 +95,52 @@ camera.lookAt(0,0,0);stars.rotation.y=t*.005;renderer.render(world,camera);
 bar.value=Math.round(pct*100);clock.textContent=t.toFixed(1)+" / "+cfg.duration.toFixed(1)+" ث"}
 function stop(){running=false;cancelAnimationFrame(frameId);play.textContent="تشغيل"}
 function tick(now){if(!running)return;elapsed=Math.min(cfg.duration,(now-started)/1000);
-draw(elapsed);if(elapsed>=cfg.duration){stop();status.textContent="اكتمل المشهد — يمكنك إعادته"}
+draw(elapsed);if(elapsed>=cfg.duration){stop();
+if(recording&&recorder&&recorder.state!=="inactive")recorder.stop();
+else status.textContent="اكتمل المشهد — يمكنك إعادته"}
 else frameId=requestAnimationFrame(tick)}
 function start(){if(running){stop();status.textContent="إيقاف مؤقت";return}
 if(elapsed>=cfg.duration)elapsed=0;started=performance.now()-elapsed*1000;running=true;
 play.textContent="إيقاف مؤقت";status.textContent="معاينة Three.js تعمل من المتصفح";
 frameId=requestAnimationFrame(tick)}
-play.addEventListener("click",start);replay.addEventListener("click",()=>{
+
+function recordClip(){
+if(recording)return;
+if(typeof MediaRecorder==="undefined"||typeof renderer.domElement.captureStream!=="function"){
+status.textContent="تصدير الفيديو غير مدعوم في هذا المتصفح. جرّب متصفحًا يدعم MediaRecorder وCanvas captureStream.";return}
+const options=["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp8","video/webm"];
+const mime=options.find(m=>MediaRecorder.isTypeSupported(m));
+if(!mime){status.textContent="هذا المتصفح لا يدعم تسجيل MP4 أو WebM من اللوحة.";return}
+let stream,rec;
+try{
+stream=renderer.domElement.captureStream(24);
+rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000});
+}catch(e){status.textContent="فشل بدء التسجيل: "+String(e.message||e);stream?.getTracks().forEach(t=>t.stop());return}
+const chunks=[];recorder=rec;recording=true;exportBtn.disabled=true;play.disabled=true;replay.disabled=true;
+status.textContent="جار تسجيل مشهد مدته "+cfg.duration+" ثوانٍ... ";
+rec.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
+rec.onerror=e=>{status.textContent="خطأ أثناء التسجيل: "+String(e.error?.message||"تعذر التسجيل")};
+rec.onstop=()=>{
+const actualMime=rec.mimeType||mime, extension=actualMime.includes("mp4")?"mp4":"webm";
+const blob=new Blob(chunks,{type:actualMime});
+if(blob.size>0){
+const url=URL.createObjectURL(blob),a=document.createElement("a");
+a.href=url;a.download="kosif-space-"+cfg.duration+"s."+extension;
+document.body.appendChild(a);a.click();a.remove();
+setTimeout(()=>URL.revokeObjectURL(url),30000);
+status.textContent="اكتمل التسجيل. إذا لم يبدأ التحميل، افتح التنزيلات في المتصفح.";
+}else status.textContent="انتهى التسجيل دون إطارات؛ جرّب متصفحًا آخر.";
+stream.getTracks().forEach(t=>t.stop());
+recording=false;recorder=null;exportBtn.disabled=false;play.disabled=false;replay.disabled=false;
+};
+stop();elapsed=0;draw(0);
+try{rec.start(250)}catch(e){recording=false;recorder=null;exportBtn.disabled=false;play.disabled=false;replay.disabled=false;stream.getTracks().forEach(t=>t.stop());status.textContent="فشل التسجيل: "+String(e.message||e);return}
+started=performance.now();running=true;play.textContent="تسجيل...";
+frameId=requestAnimationFrame(tick)
+}
+play.addEventListener("click",start);exportBtn.addEventListener("click",recordClip);replay.addEventListener("click",()=>{
 stop();elapsed=0;draw(0);start()});
-draw(0);play.disabled=false;replay.disabled=false;
+draw(0);play.disabled=false;replay.disabled=false;exportBtn.disabled=false;
 if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches)start();
 else status.textContent="التشغيل التلقائي معطّل وفق إعداد تقليل الحركة";
 }catch(error){hint.textContent="تعذّر تشغيل Three.js. يتطلب إنترنت ومتصفح يدعم WebGL.";
