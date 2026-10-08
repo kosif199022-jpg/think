@@ -17,6 +17,16 @@ class TestFreeBrowserThreeJS(unittest.TestCase):
         self.assertIn("0.0 / 5.0", page.replace('"+cfg.duration.toFixed(1)+"', "5.0"))
         self.assertIn('id="replay"', page)
 
+    def test_browser_recorder_is_capability_gated(self):
+        page = build_space_scene("KOSIF Space", 5)
+        self.assertIn('id="export"', page)
+        self.assertIn("function recordClip()", page)
+        self.assertIn("MediaRecorder.isTypeSupported", page)
+        self.assertIn("captureStream(24)", page)
+        self.assertIn('extension=actualMime.includes("mp4")?"mp4":"webm"', page)
+        self.assertIn("recorder.stop()", page)
+        self.assertIn("blob.size>0", page)
+
     def test_user_supplied_title_is_escaped(self):
         page = build_space_scene('<img src=x onerror=alert(1)>')
         self.assertIn("&lt;img", page)
