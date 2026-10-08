@@ -28,7 +28,7 @@ body{margin:0;background:#070e1f;color:#eef5ff;font:16px system-ui;padding:14px}
 main{max-width:960px;margin:auto}h1{font-size:22px}
 #stage{position:relative;min-height:200px;overflow:hidden;border:1px solid #314162;
 border-radius:14px;background:radial-gradient(#182c58,#040712 75%)}
-#stage canvas{display:block}#hint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px}
+#stage canvas{display:block}#hint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px}#hint[hidden]{display:none}
 .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
 button{min-height:44px;padding:8px 20px;border-radius:9px;background:#224675;color:white;border:1px solid #698dbb;font:inherit}
 button:disabled{opacity:.4}progress{flex:1;min-width:100px}
