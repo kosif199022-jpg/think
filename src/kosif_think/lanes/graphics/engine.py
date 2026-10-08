@@ -8,6 +8,7 @@ import time
 from .svg_builder import SVGBuilder
 from .diagrams import DiagramSynthesizer
 from .generative_canvas import GenerativeCanvas
+from .threejs_scene import build_space_scene
 from .visual_analyzer import VisualLayoutAnalyzer
 from ...core.cancellation import CancellationToken
 
@@ -79,6 +80,29 @@ class GraphicsLane:
                 "html": html,
                 "changed": True,
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)
+            }
+
+        # Browser-only Three.js space animation. This returns HTML, NOT rendered MP4.
+        elif intent in ("threejs", "three_js", "space_3d", "space_animation"):
+            values = getattr(step, "value", None)
+            config = values if isinstance(values, dict) else {}
+            markup = build_space_scene(
+                title=str(config.get("title") or getattr(step, "description", "") or "KOSIF Space"),
+                duration_seconds=config.get("duration_seconds", 5),
+                width=config.get("width", 960),
+                height=config.get("height", 540),
+            )
+            return {
+                "status": "ok",
+                "lane": "graphics",
+                "format": "html5_threejs",
+                "html": markup,
+                "renderer": "browser_webgl",
+                "requires_webgl": True,
+                "requires_network_for_threejs": True,
+                "rendered_mp4": False,
+                "changed": True,
+                "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
             }
 
         # 4. Layout Bounding Box Analysis
