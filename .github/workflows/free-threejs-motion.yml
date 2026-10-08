@@ -1,0 +1,23 @@
+name: Free browser motion adapter tests
+on:
+  pull_request:
+    paths:
+      - 'src/kosif_think/lanes/graphics/**'
+      - 'src/kosif_think/core/planner.py'
+      - 'tests/test_threejs_scene.py'
+  push:
+    branches: [feat/free-browser-threejs-motion-20261008]
+jobs:
+  python-graphics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install KOSIF
+        run: python -m pip install -e '.[dev]'
+      - name: Verify graphics adapter and syntax
+        run: |
+          python -m compileall -q src/kosif_think/lanes/graphics src/kosif_think/core/planner.py
+          python -m pytest -q tests/test_threejs_scene.py tests/test_graphics_lane.py tests/test_planner.py

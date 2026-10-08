@@ -60,7 +60,7 @@ class TaskPlanner:
         is_whatsapp = bool(re.search(r'(?:whatsapp|واتساب|واتس|رسالة|ارسل لـ|شات)', goal, re.I))
         is_voice = bool(re.search(r'\b(صوت|تحدث|نطق|انطق|تكلم|audio|voice|speech|tts|stt|whisper)\b', goal, re.I)) and not is_ios and not is_telephony
         is_coding = bool(re.search(r'\b(كود|برمجة|دالة|اختبار|فحص الكود|صلح|أصلح|fix|test|debug|ast|patch|refactor|python|code|repo_map)\b', goal, re.I))
-        is_graphics = bool(re.search(r'\b(رسم|جرافيك|مخطط|دياجرام|diagram|mermaid|svg|canvas|واجهة|تصميم|flowchart|dashboard)\b', goal, re.I))
+        is_graphics = bool(re.search(r'\b(رسم|جرافيك|مخطط|دياجرام|diagram|mermaid|svg|canvas|واجهة|تصميم|flowchart|dashboard|threejs|three\.js|3d|animation|أنيميشن|انيميشن|موشن)\b', goal, re.I))
         is_computer = bool(re.search(r'\b(افتح برنامج|شغل تطبيق|ملف|مفكرة|notepad|calc|سطح المكتب|وندوز)\b', goal, re.I))
         is_browser = bool(re.search(r'\b(تصفح|موقع|رابط|ابحث عن|google|chrome|url|http|كابتشا|صفحة|يوتيوب|متصفح سحابي|سحابي)\b', goal, re.I))
 
@@ -243,7 +243,10 @@ class TaskPlanner:
 
         # 2. Graphics Lane Plan
         elif is_graphics and not is_whatsapp:
-            if "svg" in goal.lower():
+            if any(k in goal.lower() for k in ("threejs", "three.js", "3d", "space animation", "أنيميشن", "انيميشن", "موشن", "animation")):
+                intent = "threejs"
+                desc = "معاينة مشهد ثلاثي الأبعاد متحرك داخل المتصفح باستخدام Three.js"
+            elif "svg" in goal.lower():
                 intent = "svg"
                 desc = "توليد رسم شعاعي SVG عالي الدقة"
             elif any(k in goal.lower() for k in ["canvas", "dashboard", "لوحة"]):
