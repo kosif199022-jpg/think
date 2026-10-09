@@ -28,7 +28,7 @@ def _failure_code(exc: ModelError) -> str:
     """Classify conservative retry-safe provider errors; do not log raw bodies."""
     status = getattr(exc, "status_code", None)
     if status is None:
-        match = re.search(r"\\bHTTP (\\d{3})\\b", str(exc))
+        match = re.search(r"\bHTTP (\d{3})\b", str(exc))
         status = int(match.group(1)) if match else None
     if status == 429:
         return "rate_limit"
