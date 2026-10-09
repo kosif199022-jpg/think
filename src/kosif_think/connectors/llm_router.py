@@ -9,12 +9,14 @@ token usage is billed. When no client is attached to any provider the router ans
 marks the record ``simulated: True`` so nothing downstream mistakes it for model output.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Iterable
 import copy
 import time
 import os
 
 from .models import ModelClient, ModelError
+from ..model_gateway_router import ProviderModel, RouteRequest
+from .verified_gateway import GatewayBlocked, execute_verified
 
 class BudgetExceededException(Exception):
     """Raised when cumulative session cost exceeds configured hard limit."""
@@ -136,12 +138,26 @@ class LLMRouter:
         model_override: Optional[str] = None,
         max_tokens: int = 4096,
         temperature: Optional[float] = None,
+        *,
+        policy_request: Optional[RouteRequest] = None,
+        trusted_catalog: Optional[Iterable[ProviderModel]] = None,
+        request_id: str = "",
     ) -> Dict[str, Any]:
         """Dispatches a completion through healthy providers in cascade order.
 
         With clients attached only those providers are tried, and the returned usage is what the provider
         reported. With none attached the reply is a placeholder flagged ``simulated: True``.
         """
+        # Explicit opt-in: never silently downgrade a failed verified route
+        # into the legacy (possibly simulated) completion cascade.
+        if policy_request is not None:
+            if trusted_catalog is None:
+                raise GatewayBlocked("TRUSTED_CATALOG_REQUIRED")
+            return execute_verified(
+                self, prompt, policy_request, trusted_catalog,
+                system_instruction=system_instruction, max_tokens=max_tokens,
+                temperature=temperature, request_id=request_id,
+            )
         t0 = time.perf_counter()
         simulated = self.is_simulated
         est_prompt_tokens = self.estimate_tokens(prompt) + self.estimate_tokens(system_instruction or "")
