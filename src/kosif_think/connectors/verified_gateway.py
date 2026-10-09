@@ -69,6 +69,8 @@ def execute_verified(
         raise GatewayBlocked(decision.reason)
 
     trusted_lookup = {(p.provider, p.model): p for p in catalog}
+    if len(trusted_lookup) != len(catalog):
+        raise GatewayBlocked("DUPLICATE_PROVIDER_MODEL")
     attached = []
     for identity in decision.model_ids:
         # The identity is assembled from trusted catalogue fields; exact match
@@ -105,6 +107,8 @@ def execute_verified(
         )
         if not math.isfinite(projected_cost) or projected_cost < 0:
             raise GatewayBlocked("INVALID_PRICE_ESTIMATE")
+        if request.max_estimated_cost_usd is not None and projected_cost > request.max_estimated_cost_usd:
+            raise GatewayBlocked("REQUEST_ESTIMATED_COST_EXCEEDED")
         if router.cumulative_cost_usd + projected_cost > router.max_budget_usd:
             raise GatewayBlocked("BUDGET_RESERVATION_EXCEEDED")
 
