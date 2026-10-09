@@ -169,3 +169,22 @@ def test_successful_scripted_client_as_dedicated_provider():
     result = router.dispatch_completion("hello", policy_request=req(),
         trusted_catalog=[eligible(name="scripted", model="scripted")])
     assert result["response"] == "ok"
+
+
+def test_duplicate_catalog_claims_are_rejected_before_execution():
+    client = FakeClient("good")
+    router = LLMRouter(clients={"good": client})
+    with pytest.raises(GatewayBlocked, match="DUPLICATE_PROVIDER_MODEL"):
+        router.dispatch_completion("hello", policy_request=req(),
+            trusted_catalog=[eligible(), eligible(authorized=False)])
+    assert client.calls == 0
+
+
+def test_request_cost_limit_enforced_against_reserved_cost():
+    client = FakeClient("good")
+    router = LLMRouter(max_budget_usd=10, clients={"good": client})
+    with pytest.raises(GatewayBlocked, match="REQUEST_ESTIMATED_COST_EXCEEDED"):
+        router.dispatch_completion("hello",
+            policy_request=req(max_estimated_cost_usd=0.001),
+            trusted_catalog=[eligible(estimated_cost_usd=0.002)])
+    assert client.calls == 0
