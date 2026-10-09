@@ -13,7 +13,7 @@ Source inspiration: https://github.com/theRizwan/FlagshipRouter (MIT), especiall
 
 - src/kosif_think/model_gateway_router.py: deterministic model ranking and explicit safe-fallback decisions; no network or credentials.
 - tests/test_model_gateway_router.py: covers health, auth, quota, free-tier verification, privacy, provider consent, capability checks, Full Pro, canonical side effects and idempotent-only retry.
-- This feature is NOT wired to production, because live runtime/provider configuration, owner authorization and receipts must be integrated and verified first.
+- Python LLMRouter is now wired via explicit opt-in `dispatch_completion(policy_request=..., trusted_catalog=..., request_id=...)`. The legacy call path is unchanged; verified dispatch fails closed rather than simulating success. **Cloudflare KOSIF Think/ChatGPT production is a different runtime and has NOT been updated.**
 
 ## Minimum integration contract
 
@@ -37,3 +37,42 @@ Source inspiration: https://github.com/theRizwan/FlagshipRouter (MIT), especiall
 - Shadow-route representative tasks and compare against the existing selector before enabling traffic.
 - Verify stable, request-bound Full Pro/side-effect receipts. Never classify an index entry or a provider status check as execution proof.
 - Maintain immutable repair-log chain and guarded publication/read-back.
+
+
+## Python integration contract (opt-in, not Cloudflare deployment)
+
+The Python caller obtains fresh provider health, auth, quota, capabilities, price and privacy claims **server-side** from trusted KOSIF services; it MUST NOT trust a raw user-submitted catalogue. Attach matching authorized ModelClient instances to LLMRouter. Call:
+
+```python
+from kosif_think.connectors.llm_router import LLMRouter
+from kosif_think.connectors.models import ScriptedClient
+from kosif_think.model_gateway_router import ProviderModel, RouteRequest
+
+router = LLMRouter(clients={"scripted": ScriptedClient(["test reply"])})
+request = RouteRequest(mode="standard", capabilities=frozenset({"text"}))
+verified_catalog = [
+    ProviderModel(provider="scripted", model="scripted",
+                  capabilities=frozenset({"text"}), status="ready",
+                  authorized=True, quota_available=True)
+]
+receipt = router.dispatch_completion("hello", policy_request=request,
+                                     trusted_catalog=verified_catalog,
+                                     request_id="example.1")
+assert receipt["status"] == "executed" and not receipt["simulated"]
+```
+
+`ScriptedClient` is a **test double**, not a real AI provider. For actual calls attach a configured real ModelClient, and derive its readiness from fresh independent provider checks. The public HTTP /v1/chat/completions API is **not** switched to this route, because it exposes broader execution paths and requires separate review of auth, approval gates and multi-tenant policy.
+
+The guarded path rejects no client, unknown authorization, quota or health, Full Pro, canonical side-effect owner misuse and unsupported model/capability matches. Transient fallbacks require idempotent requests and only use already verified candidates. A returned receipt proves a model adapter executed, NOT factual accuracy, external QA or Full Pro.
+
+Provider rates in the legacy Python CATALOG are estimates and need active verification before paid traffic. The preflight reservation is conservative, but actual provider billing can exceed predicted cost; overruns are recorded and fail closed without claiming a hard real-time billing guarantee. Don't enable paid traffic without an upstream hard budget guard, key authorization and cost consent.
+
+### Remaining production activation gates
+
+1. Find the actual canonical Cloudflare worker source and inspect current release, security and provider adapters.
+2. Add analogous policy routing to that JS/Worker runtime, behind an off-by-default feature flag.
+3. Obtain fresh provider config and authorize only trusted services, not user-supplied status.
+4. Test request-bound Full Pro receipts, selected model identity, provider-failure fallback, billing, and rollback.
+5. Canary rollout, smoke tests, and read-back before enabling wider live traffic.
+
+This Python integration is complete as an opt-in library feature only, not proof of production Cloudflare activation.
