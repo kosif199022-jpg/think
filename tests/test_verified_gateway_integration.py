@@ -183,8 +183,11 @@ def test_duplicate_catalog_claims_are_rejected_before_execution():
 def test_request_cost_limit_enforced_against_reserved_cost():
     client = FakeClient("good")
     router = LLMRouter(max_budget_usd=10, clients={"good": client})
+    # The model catalogue claims zero, but the server-side price book
+    # conservatively reserves a higher amount per output token.
+    router.CATALOG["good"].cost_per_1k_output = 1.0
     with pytest.raises(GatewayBlocked, match="REQUEST_ESTIMATED_COST_EXCEEDED"):
         router.dispatch_completion("hello",
             policy_request=req(max_estimated_cost_usd=0.001),
-            trusted_catalog=[eligible(estimated_cost_usd=0.002)])
+            trusted_catalog=[eligible(estimated_cost_usd=0.0)])
     assert client.calls == 0
