@@ -75,7 +75,8 @@ class ReasoningLane:
 
         # Model-only strategies: debate, self-refine, least-to-most (no template fallback).
         model_only = {"debate": "multi_agent_debate", "multi_agent_debate": "multi_agent_debate",
-                      "self_refine": "self_refine", "least_to_most": "least_to_most"}
+                      "self_refine": "self_refine", "least_to_most": "least_to_most",
+                      "council100": "council100", "council_100": "council100"}
         if intent in model_only:
             mode = model_only[intent]
             if self.client is None:
@@ -83,7 +84,10 @@ class ReasoningLane:
                         "error": "No model configured. Set ANTHROPIC_API_KEY, OLLAMA_HOST or KOSIF_OPENAI_BASE_URL.",
                         "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
             try:
-                if mode == "multi_agent_debate":
+                if mode == "council100":
+                    from ...pro import deliberate
+                    res = deliberate(self.client, goal)
+                elif mode == "multi_agent_debate":
                     res = multi_agent_debate([self.client] * 3, goal)
                 elif mode == "self_refine":
                     res = self_refine(self.client, goal)

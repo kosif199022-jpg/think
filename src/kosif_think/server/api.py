@@ -186,6 +186,16 @@ class ThinkHTTPRequestHandler(BaseHTTPRequestHandler):
             res = loop.run_until_complete(openai_bridge.handle_chat_completion(payload))
             self._send_json(200, res)
 
+        # Deterministic KOSIF Think Pro tools: POST /api/pro/<tool> with the tool's input object
+        elif path.startswith("/api/pro/"):
+            from ..pro import run_tool as run_pro_tool
+            try:
+                self._send_json(200, run_pro_tool(path[len("/api/pro/"):], payload))
+            except KeyError as ex:
+                self._send_json(404, {"ok": False, "error": str(ex)})
+            except (ValueError, TypeError, ArithmeticError) as ex:
+                self._send_json(400, {"ok": False, "error": str(ex)})
+
         # 2. Native Think Execution
         elif path == "/api/think/execute":
             goal = payload.get("goal") or payload.get("prompt") or ""
