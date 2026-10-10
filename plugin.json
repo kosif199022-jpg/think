@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kosif-think",
+  "version": "0.9.0",
+  "description": "Unified KOSIF orchestration surface combining Think reasoning, computer/browser execution, Jev ambiguity resolution and WhatsApp actions with verification, cancellation and recovery.",
+  "author": {"name": "Kosif"},
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "KOSIF Think",
+        "shortDescription": "One KOSIF tool for thinking, computer, browser and WhatsApp",
+        "longDescription": "KOSIF Think v0.9.0 is the single user-facing KOSIF surface. Think plans and routes; computer/browser lanes execute and verify; Jev resolves only bounded ambiguity among observed candidates; WhatsApp messaging is connected internally through the KOSIF WhatsApp MCP backend.",
+        "developerName": "Kosif",
+        "category": "Productivity",
+        "capabilities": ["Interactive"],
+        "defaultPrompt": [
+          "When KOSIF Think is explicitly selected, run Think preflight before substantive downstream work.",
+          "Route authorized browser/device work through the integrated KOSIF computer/browser lanes and verify observable postconditions.",
+          "Use Jev only to resolve bounded ambiguity among observed stable candidates; never let it invent targets or selectors.",
+          "Route WhatsApp messaging, files, contacts, scheduling and delivery checks through the internally connected KOSIF WhatsApp backend.",
+          "Honor cancellation before the next side effect and require approval for consequential writes such as payments, deletes, sends/publishes, credential/security changes or transfers.",
+          "Never claim completion from a click, command, transport response or model confidence alone; verify the resulting state."
+        ]
+      }
+    }
+  },
+  "skills": "./skills",
+  "mcpServers": "./.mcp.json"
+}

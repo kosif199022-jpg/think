@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "kosif-think": {
+      "type": "streamable-http",
+      "url": "https://kosif-think-mcp.kosif199022.workers.dev/mcp",
+      "headers": {}
+    },
+    "kosif-whatsapp": {
+      "type": "streamable-http",
+      "url": "https://wa-kosif-mcp.kosif199022.workers.dev/mcp",
+      "headers": {}
+    }
+  }
+}
